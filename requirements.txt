@@ -1,0 +1,20 @@
+opencv-python==4.8.1.78
+torch==2.0.1
+torchvision==0.15.2
+yolov5==7.0.13
+ultralytics==8.0.226
+pyserial==3.5
+numpy==1.24.3
+Pillow==10.0.0
+scipy==1.11.4
+
+# Optional: WiFi support
+requests==2.31.0
+websocket-client==1.6.4
+
+# Optional: Bluetooth support
+pybluez==0.23
+
+# Optional: Bluetooth Low Energy support
+bleak==0.21.1
+
