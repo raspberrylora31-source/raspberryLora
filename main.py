@@ -3,18 +3,13 @@ Main Orchestrator - Real-time Object Detection System for Raspberry Pi
 Integrates detection, LoRa communication, GPS, and logging
 """
 
-import cv2
 import logging
 import argparse
 import signal
 import sys
-from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
-# Import custom modules
-from detector import YOLOModelLoader, ObjectDetector
-from lora import SerialHandler, LoRaMessenger
-from utils import GPSHandler, LocalLogger
+from utils.logger import LocalLogger
 
 
 class DetectionSystem:
@@ -61,6 +56,23 @@ class DetectionSystem:
         """
         self.logger = logging.getLogger(__name__)
         self.running = True
+        self.camera = None
+        self.serial_handler = None
+        self.gps_handler = None
+
+        try:
+            import cv2
+            from detector import YOLOModelLoader, ObjectDetector
+            from lora import SerialHandler, LoRaMessenger
+            from utils.gps import GPSHandler
+        except ImportError as exc:
+            raise RuntimeError(
+                "Missing runtime dependency. Install dependencies with "
+                "`python3 -m pip install -r requirements.txt`."
+            ) from exc
+
+        self.cv2 = cv2
+        self.ObjectDetector = ObjectDetector
 
         # Configuration
         self.config = {
@@ -91,7 +103,6 @@ class DetectionSystem:
         )
 
         # 2. Initialize camera
-        self.camera = None
         self.camera_width = camera_width
         self.camera_height = camera_height
         self._init_camera(camera_id)
@@ -107,6 +118,10 @@ class DetectionSystem:
             serial_handler=self.serial_handler,
             cooldown_seconds=lora_cooldown,
         )
+        if not self.serial_handler.connect():
+            self.logger.warning(
+                "LoRa connection unavailable; detections will be logged locally only"
+            )
 
         # 4. Initialize GPS
         self.gps_handler = GPSHandler(use_simulation=gps_simulation)
@@ -131,19 +146,19 @@ class DetectionSystem:
             True if successful
         """
         try:
-            self.camera = cv2.VideoCapture(camera_id)
+            self.camera = self.cv2.VideoCapture(camera_id)
 
             if not self.camera.isOpened():
                 self.logger.error(f"Failed to open camera {camera_id}")
                 return False
 
             # Set camera resolution (lower resolution = better performance)
-            self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, self.camera_width)
-            self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, self.camera_height)
-            self.camera.set(cv2.CAP_PROP_FPS, 15)  # Lower FPS for RPi
+            self.camera.set(self.cv2.CAP_PROP_FRAME_WIDTH, self.camera_width)
+            self.camera.set(self.cv2.CAP_PROP_FRAME_HEIGHT, self.camera_height)
+            self.camera.set(self.cv2.CAP_PROP_FPS, 15)  # Lower FPS for RPi
 
             # Reduce buffering to minimize lag
-            self.camera.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+            self.camera.set(self.cv2.CAP_PROP_BUFFERSIZE, 1)
 
             self.logger.info(
                 f"✓ Camera initialized (ID: {camera_id}, "
@@ -207,13 +222,13 @@ class DetectionSystem:
 
                 # Draw and display if enabled
                 if self.config["enable_display"]:
-                    display_frame = ObjectDetector.draw_detections(
+                    display_frame = self.ObjectDetector.draw_detections(
                         frame, entity_type
                     )
-                    cv2.imshow("Detection", display_frame)
+                    self.cv2.imshow("Detection", display_frame)
 
                     # Press 'q' to quit
-                    if cv2.waitKey(1) & 0xFF == ord("q"):
+                    if self.cv2.waitKey(1) & 0xFF == ord("q"):
                         break
 
                 # Status logging every 100 frames
@@ -239,13 +254,15 @@ class DetectionSystem:
         # Close camera
         if self.camera:
             self.camera.release()
-            cv2.destroyAllWindows()
+            self.cv2.destroyAllWindows()
 
         # Disconnect LoRa
-        self.serial_handler.disconnect()
+        if self.serial_handler:
+            self.serial_handler.disconnect()
 
         # Close GPS
-        self.gps_handler.close()
+        if self.gps_handler:
+            self.gps_handler.close()
 
         # Log shutdown
         self.local_logger.log_shutdown("Normal shutdown")
@@ -253,8 +270,8 @@ class DetectionSystem:
         self.logger.info("✓ System shutdown complete")
 
 
-def main():
-    """Main entry point."""
+def build_parser() -> argparse.ArgumentParser:
+    """Build command line argument parser."""
     parser = argparse.ArgumentParser(
         description="Real-time Object Detection for Raspberry Pi with LoRa"
     )
@@ -352,8 +369,15 @@ def main():
         help="Show camera feed with detections",
     )
 
+    return parser
+
+
+def main(argv: Optional[List[str]] = None):
+    """Main entry point."""
+    parser = build_parser()
+
     # Parse arguments
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     # Initialize logging
     local_logger = LocalLogger(enable_file_logging=True)
