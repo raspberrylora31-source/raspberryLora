@@ -41,30 +41,42 @@ class LocalLogger:
         """Configure Python logging."""
         log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
         date_format = "%Y-%m-%d %H:%M:%S"
-
-        # Console handler
-        console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.DEBUG)
-        console_formatter = logging.Formatter(log_format, datefmt=date_format)
-        console_handler.setFormatter(console_formatter)
-
-        # Root logger
         root_logger = logging.getLogger()
         root_logger.setLevel(logging.DEBUG)
-        root_logger.addHandler(console_handler)
+
+        def has_named_handler(handler_name: str) -> bool:
+            return any(
+                getattr(handler, "name", None) == handler_name
+                for handler in root_logger.handlers
+            )
+
+        # Console handler
+        console_handler_name = "raspberry_lora_console"
+        console_formatter = logging.Formatter(log_format, datefmt=date_format)
+        if not has_named_handler(console_handler_name):
+            console_handler = logging.StreamHandler()
+            console_handler.name = console_handler_name
+            console_handler.setLevel(logging.DEBUG)
+            console_handler.setFormatter(console_formatter)
+            root_logger.addHandler(console_handler)
 
         # File handlers
         if self.enable_file_logging:
-            detection_handler = logging.FileHandler(self.detection_log_path)
-            detection_handler.setLevel(logging.INFO)
-            detection_handler.setFormatter(console_formatter)
+            detection_handler_name = f"raspberry_lora_detection:{self.detection_log_path}"
+            if not has_named_handler(detection_handler_name):
+                detection_handler = logging.FileHandler(self.detection_log_path)
+                detection_handler.name = detection_handler_name
+                detection_handler.setLevel(logging.INFO)
+                detection_handler.setFormatter(console_formatter)
+                root_logger.addHandler(detection_handler)
 
-            error_handler = logging.FileHandler(self.error_log_path)
-            error_handler.setLevel(logging.ERROR)
-            error_handler.setFormatter(console_formatter)
-
-            root_logger.addHandler(detection_handler)
-            root_logger.addHandler(error_handler)
+            error_handler_name = f"raspberry_lora_error:{self.error_log_path}"
+            if not has_named_handler(error_handler_name):
+                error_handler = logging.FileHandler(self.error_log_path)
+                error_handler.name = error_handler_name
+                error_handler.setLevel(logging.ERROR)
+                error_handler.setFormatter(console_formatter)
+                root_logger.addHandler(error_handler)
 
     def log_detection(
         self, entity_type: str, latitude: str, longitude: str

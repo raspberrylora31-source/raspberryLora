@@ -105,7 +105,8 @@ class DetectionSystem:
         # 2. Initialize camera
         self.camera_width = camera_width
         self.camera_height = camera_height
-        self._init_camera(camera_id)
+        if not self._init_camera(camera_id):
+            raise RuntimeError(f"Camera {camera_id} is not available")
 
         # 3. Initialize LoRa (with multiple connection options)
         self.serial_handler = SerialHandler(

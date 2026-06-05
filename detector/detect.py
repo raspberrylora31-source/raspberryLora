@@ -92,6 +92,29 @@ class ObjectDetector:
 
         return padded
 
+    @staticmethod
+    def _extract_predictions(results):
+        """
+        Normalize supported YOLO result formats to prediction rows.
+
+        YOLOv5 returns an object with ``pred`` tensors. Ultralytics YOLOv8
+        returns a list of Results objects with bounding boxes on ``boxes.data``.
+        Both row formats are [x1, y1, x2, y2, confidence, class].
+        """
+        if hasattr(results, "pred"):
+            return results.pred[0]
+
+        if isinstance(results, (list, tuple)) and results:
+            first_result = results[0]
+            if hasattr(first_result, "boxes") and first_result.boxes is not None:
+                return first_result.boxes.data
+            return first_result
+
+        if hasattr(results, "boxes") and results.boxes is not None:
+            return results.boxes.data
+
+        return results
+
     def detect(self, frame) -> Tuple[bool, bool, Dict]:
         """
         Run object detection on frame.
@@ -125,14 +148,20 @@ class ObjectDetector:
                 results = self.model(processed_frame)
 
             # Process results
-            predictions = results.pred[0] if hasattr(results, "pred") else results
+            predictions = self._extract_predictions(results)
 
             # Handle different model output formats
-            if isinstance(predictions, torch.Tensor):
+            if isinstance(predictions, (torch.Tensor, np.ndarray, list, tuple)):
                 # YOLOv5 format: [x1, y1, x2, y2, conf, class]
                 for pred in predictions:
-                    if len(pred) >= 6:
-                        x1, y1, x2, y2, conf, cls = pred[:6]
+                    values = pred
+                    if isinstance(pred, torch.Tensor):
+                        values = pred.detach().cpu().tolist()
+                    elif hasattr(pred, "tolist"):
+                        values = pred.tolist()
+
+                    if len(values) >= 6:
+                        x1, y1, x2, y2, conf, cls = values[:6]
                         conf = float(conf)
                         cls = int(cls)
 

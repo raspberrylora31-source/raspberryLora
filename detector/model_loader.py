@@ -56,6 +56,7 @@ class YOLOModelLoader:
                     "yolov5n",
                     pretrained=True,
                     force_reload=False,
+                    trust_repo=True,
                     verbose=False,
                 )
             elif self.model_name == "yolov8n":
@@ -95,6 +96,7 @@ class YOLOModelLoader:
             "yolov5n",
             pretrained=True,
             force_reload=False,
+            trust_repo=True,
             verbose=False,
         )
         self.model.to(self.device)
