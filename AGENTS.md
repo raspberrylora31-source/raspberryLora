@@ -21,33 +21,24 @@ sudo apt-get install -y python3-venv python3-dev build-essential libgl1 libglib2
 
 ```bash
 source venv/bin/activate
-python3 main.py --help
-python3 main.py --gps-simulation          # needs USB camera + optional ESP32 serial
+
+# Raspberry Pi with USB camera (/dev/video0) + ESP32 on serial
+export SIM_LAT="37.7749"
+export SIM_LON="-122.4194"
+python3 main.py --gps-simulation --camera 0 --lora-port /dev/ttyUSB0
+
+# Optional: preview live feed (same as mpv av://v4l2:/dev/video0)
+python3 main.py --gps-simulation --camera 0 --display
+
+# Cloud VM / no camera: use a video file + virtual serial (socat)
+python3 main.py --gps-simulation --video-file /tmp/test_feed.mp4 --lora-port /tmp/ttyV0
 ```
+
+**Camera setup on Pi (user-verified):** install `fswebcam`, `v4l-utils`, `ffmpeg`; confirm device with `ls /dev/video*` and `v4l2-ctl --all`; preview with `mpv av://v4l2:/dev/video0`.
 
 ### Known issue: `utils` package name collision
 
-The project top-level package `utils/` shadows YOLOv5's internal `utils` module during `torch.hub.load`, so **`main.py` fails at model load** with:
-
-`ImportError: cannot import name 'TryExcept' from 'utils'`
-
-Workaround for manual/integration testing (load model before importing project `utils`, then clear cached `utils*` modules):
-
-```python
-import sys
-WORKSPACE = "/workspace"  # repo root
-sys.path.insert(0, WORKSPACE)
-from detector.model_loader import YOLOModelLoader
-sys.path = [p for p in sys.path if p != WORKSPACE]
-model = YOLOModelLoader("yolov5n").load_model()
-for key in list(sys.modules):
-    if key == "utils" or key.startswith("utils."):
-        del sys.modules[key]
-sys.path.insert(0, WORKSPACE)
-from utils import GPSHandler, LocalLogger  # now safe
-```
-
-First YOLO load also requires network access; newer PyTorch hub prompts for repo trust unless the repo is already cached/trusted.
+Fixed in `detector/model_loader.py` — YOLOv5 hub load no longer conflicts with the project `utils/` package. `main.py` also connects LoRa serial on startup (required before send).
 
 ### Services
 
