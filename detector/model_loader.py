@@ -3,11 +3,49 @@ Model Loader - Optimized for Raspberry Pi 4B
 Loads lightweight YOLO models for person and weapon detection
 """
 
+import os
+import sys
 import torch
 import logging
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _load_yolov5_from_hub(model_name: str = "yolov5n"):
+    """
+    Load YOLOv5 via torch.hub without conflicting with this project's `utils` package.
+    """
+    saved_path = sys.path[:]
+    saved_modules = {
+        key: sys.modules[key]
+        for key in list(sys.modules)
+        if key == "utils" or key.startswith("utils.")
+    }
+    project_root = str(PROJECT_ROOT.resolve())
+
+    for key in saved_modules:
+        sys.modules.pop(key, None)
+
+    sys.path = [
+        p for p in sys.path if os.path.abspath(p) != os.path.abspath(project_root)
+    ]
+
+    try:
+        return torch.hub.load(
+            "ultralytics/yolov5",
+            model_name,
+            pretrained=True,
+            force_reload=False,
+            verbose=False,
+            trust_repo=True,
+        )
+    finally:
+        sys.path = saved_path
+        for key, module in saved_modules.items():
+            sys.modules.setdefault(key, module)
 
 
 class YOLOModelLoader:
@@ -51,13 +89,7 @@ class YOLOModelLoader:
 
             if self.model_name == "yolov5n":
                 # YOLOv5 nano - ~7.5MB, ~2M params
-                self.model = torch.hub.load(
-                    "ultralytics/yolov5",
-                    "yolov5n",
-                    pretrained=True,
-                    force_reload=False,
-                    verbose=False,
-                )
+                self.model = _load_yolov5_from_hub("yolov5n")
             elif self.model_name == "yolov8n":
                 # YOLOv8 nano - ~6.3MB, ~3.2M params
                 try:
@@ -90,13 +122,7 @@ class YOLOModelLoader:
 
     def load_model_yolov5n(self):
         """Load YOLOv5n as fallback."""
-        self.model = torch.hub.load(
-            "ultralytics/yolov5",
-            "yolov5n",
-            pretrained=True,
-            force_reload=False,
-            verbose=False,
-        )
+        self.model = _load_yolov5_from_hub("yolov5n")
         self.model.to(self.device)
         self.model.eval()
         return self.model

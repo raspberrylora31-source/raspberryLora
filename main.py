@@ -39,6 +39,7 @@ class DetectionSystem:
         lora_wifi_port: int = 8080,
         lora_cooldown: int = 30,
         enable_display: bool = False,
+        video_file: Optional[str] = None,
     ):
         """
         Initialize detection system.
@@ -58,9 +59,11 @@ class DetectionSystem:
             lora_wifi_port: Port for WiFi connection
             lora_cooldown: LoRa message cooldown in seconds
             enable_display: Show camera feed with detections
+            video_file: Optional video/image path instead of USB camera (dev/testing)
         """
         self.logger = logging.getLogger(__name__)
         self.running = True
+        self.video_file = video_file
 
         # Configuration
         self.config = {
@@ -76,6 +79,7 @@ class DetectionSystem:
             "lora_wifi_port": lora_wifi_port,
             "lora_cooldown": lora_cooldown,
             "enable_display": enable_display,
+            "video_file": video_file,
         }
 
         # Initialize components
@@ -94,7 +98,7 @@ class DetectionSystem:
         self.camera = None
         self.camera_width = camera_width
         self.camera_height = camera_height
-        self._init_camera(camera_id)
+        self._init_camera(camera_id, video_file)
 
         # 3. Initialize LoRa (with multiple connection options)
         self.serial_handler = SerialHandler(
@@ -107,6 +111,10 @@ class DetectionSystem:
             serial_handler=self.serial_handler,
             cooldown_seconds=lora_cooldown,
         )
+        if not self.serial_handler.connect():
+            self.logger.warning(
+                "LoRa serial connection failed; detection will continue without LoRa send"
+            )
 
         # 4. Initialize GPS
         self.gps_handler = GPSHandler(use_simulation=gps_simulation)
@@ -120,35 +128,40 @@ class DetectionSystem:
 
         self.local_logger.log_startup(self.config)
 
-    def _init_camera(self, camera_id: int) -> bool:
+    def _init_camera(self, camera_id: int, video_file: Optional[str] = None) -> bool:
         """
-        Initialize USB camera.
+        Initialize USB camera or video file source.
 
         Args:
             camera_id: Camera device ID
+            video_file: Optional path to video/image file (for dev/testing)
 
         Returns:
             True if successful
         """
         try:
-            self.camera = cv2.VideoCapture(camera_id)
+            source = video_file if video_file else camera_id
+            self.camera = cv2.VideoCapture(source)
 
             if not self.camera.isOpened():
-                self.logger.error(f"Failed to open camera {camera_id}")
+                self.logger.error(f"Failed to open camera source: {source}")
                 return False
 
-            # Set camera resolution (lower resolution = better performance)
-            self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, self.camera_width)
-            self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, self.camera_height)
-            self.camera.set(cv2.CAP_PROP_FPS, 15)  # Lower FPS for RPi
+            if video_file:
+                self.logger.info(f"✓ Video source initialized: {video_file}")
+            else:
+                # Set camera resolution (lower resolution = better performance)
+                self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, self.camera_width)
+                self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, self.camera_height)
+                self.camera.set(cv2.CAP_PROP_FPS, 15)  # Lower FPS for RPi
 
-            # Reduce buffering to minimize lag
-            self.camera.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                # Reduce buffering to minimize lag
+                self.camera.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
-            self.logger.info(
-                f"✓ Camera initialized (ID: {camera_id}, "
-                f"{self.camera_width}x{self.camera_height})"
-            )
+                self.logger.info(
+                    f"✓ Camera initialized (ID: {camera_id}, "
+                    f"{self.camera_width}x{self.camera_height})"
+                )
             return True
 
         except Exception as e:
@@ -173,8 +186,12 @@ class DetectionSystem:
                 # Capture frame
                 ret, frame = self.camera.read()
                 if not ret:
-                    self.logger.error("Failed to read frame from camera")
-                    break
+                    if self.video_file:
+                        self.camera.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                        ret, frame = self.camera.read()
+                    if not ret:
+                        self.logger.error("Failed to read frame from camera")
+                        break
 
                 frame_count += 1
 
@@ -272,7 +289,12 @@ def main():
         "--camera",
         type=int,
         default=0,
-        help="Camera device ID (default: 0)",
+        help="Camera device ID (default: 0). Use with /dev/video0 on Raspberry Pi.",
+    )
+    parser.add_argument(
+        "--video-file",
+        default=None,
+        help="Use a video/image file instead of USB camera (dev/testing)",
     )
     parser.add_argument(
         "--width",
@@ -375,6 +397,7 @@ def main():
             lora_wifi_port=args.lora_wifi_port,
             lora_cooldown=args.lora_cooldown,
             enable_display=args.display,
+            video_file=args.video_file,
         )
 
         system.run()
