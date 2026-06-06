@@ -363,7 +363,7 @@ def main():
     parser.add_argument(
         "--location-api-url",
         default=GPSHandler.DEFAULT_API_URL,
-        help="IP geolocation API URL (default: http://ip-api.com/json/)",
+        help="IP geolocation API URL (default: https://ipinfo.io/json)",
     )
 
     # Display

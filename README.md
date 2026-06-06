@@ -88,10 +88,10 @@ python main.py \
   --location-retries 2
 ```
 
-Use `https://ipinfo.io/json` instead of the default API:
+Use `ip-api.com` instead of the default API:
 
 ```bash
-python main.py --location-api-url https://ipinfo.io/json
+python main.py --location-api-url http://ip-api.com/json/
 ```
 
 ## Output
@@ -107,7 +107,7 @@ Example debug output:
 ```text
 IP geolocation enabled
 Note: IP geolocation is approximate, not true GPS
-Fetching IP location (attempt 1/2) from http://ip-api.com/json/
+Fetching IP location (attempt 1/2) from https://ipinfo.io/json
 Updated IP location: 12.9716,77.5946
 Using cached IP location: 12.9716,77.5946
 ```
@@ -115,7 +115,7 @@ Using cached IP location: 12.9716,77.5946
 ## Location behavior
 
 - Location lookup happens only when a person detection is processed.
-- The default API is `http://ip-api.com/json/`.
+- The default API is `https://ipinfo.io/json`.
 - The handler caches the latest successful coordinates in memory.
 - The default refresh cooldown is 25 seconds.
 - Failed requests retry, then fall back to the last known coordinates.
@@ -228,7 +228,7 @@ Location is wrong:
 
 - IP geolocation is approximate by design.
 - VPNs, mobile hotspots, and ISP routing can place the device in another city.
-- Try `--location-api-url https://ipinfo.io/json`.
+- Try `--location-api-url http://ip-api.com/json/`.
 
 Model download fails:
 

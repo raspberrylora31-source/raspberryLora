@@ -20,7 +20,7 @@ class GPSHandler:
 
     DEFAULT_LATITUDE = "0.0000"
     DEFAULT_LONGITUDE = "0.0000"
-    DEFAULT_API_URL = "http://ip-api.com/json/"
+    DEFAULT_API_URL = "https://ipinfo.io/json"
 
     def __init__(
         self,
