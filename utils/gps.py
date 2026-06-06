@@ -1,152 +1,141 @@
-"""
-GPS Module - Location service for Raspberry Pi
-Supports USB GPS modules and location simulation
-"""
+"""Lightweight IP-based geolocation for Raspberry Pi."""
 
+import json
 import logging
-import os
-from typing import Tuple, Optional
-from datetime import datetime
+import time
+from typing import Optional, Tuple
+
+import requests
 
 logger = logging.getLogger(__name__)
 
 
 class GPSHandler:
     """
-    GPS location handler for Raspberry Pi.
-    Supports USB GPS modules (NMEA protocol) or location simulation.
+    Approximate location handler based on public IP geolocation.
+
+    This is not true GPS. Accuracy depends on the ISP/network and may be city
+    or region level, especially behind VPNs, proxies, hotspots, or carrier NAT.
     """
 
-    # Default location (simulation fallback)
     DEFAULT_LATITUDE = "0.0000"
     DEFAULT_LONGITUDE = "0.0000"
+    DEFAULT_API_URL = "http://ip-api.com/json/"
 
-    def __init__(self, use_simulation: bool = True, gps_port: str = "/dev/ttyUSB1"):
+    def __init__(
+        self,
+        update_interval_seconds: int = 25,
+        timeout_seconds: float = 3.0,
+        max_retries: int = 2,
+        api_url: str = DEFAULT_API_URL,
+    ):
         """
-        Initialize GPS handler.
+        Initialize IP geolocation.
 
         Args:
-            use_simulation: If True, use simulated location instead of real GPS
-            gps_port: Serial port for GPS module (if not simulating)
+            update_interval_seconds: Minimum seconds between API calls.
+            timeout_seconds: HTTP timeout per request.
+            max_retries: Retry attempts before falling back to cached location.
+            api_url: Free IP geolocation endpoint.
         """
-        self.use_simulation = use_simulation
-        self.gps_port = gps_port
+        self.update_interval_seconds = update_interval_seconds
+        self.timeout_seconds = timeout_seconds
+        self.max_retries = max_retries
+        self.api_url = api_url
         self.current_latitude = self.DEFAULT_LATITUDE
         self.current_longitude = self.DEFAULT_LONGITUDE
-        self.last_fix_time = None
-        self.gps_module = None
+        self.last_update_time = 0.0
 
-        if use_simulation:
-            logger.info("GPS Handler: Using simulated location mode")
-            self.init_simulation()
-        else:
-            logger.info(f"GPS Handler: Using GPS module on {gps_port}")
-            self.init_gps_module()
-
-    def init_simulation(self) -> None:
-        """Initialize simulated GPS with default location."""
-        self.current_latitude = os.getenv("SIM_LAT", self.DEFAULT_LATITUDE)
-        self.current_longitude = os.getenv("SIM_LON", self.DEFAULT_LONGITUDE)
+        print("IP geolocation enabled")
+        print("Note: IP geolocation is approximate, not true GPS")
         logger.info(
-            f"Simulated location: {self.current_latitude}, {self.current_longitude}"
+            "IP geolocation initialized: interval=%ss timeout=%ss retries=%s api=%s",
+            update_interval_seconds,
+            timeout_seconds,
+            max_retries,
+            api_url,
         )
 
-    def init_gps_module(self) -> None:
-        """Initialize real GPS module (USB NMEA)."""
-        try:
-            import serial
+    def get_current_location(self) -> Tuple[str, str]:
+        """Return cached coordinates, refreshing from IP geolocation on cooldown."""
+        now = time.monotonic()
+        elapsed = now - self.last_update_time
 
-            self.gps_module = serial.Serial(
-                port=self.gps_port, baudrate=9600, timeout=2
+        if elapsed < self.update_interval_seconds:
+            print(
+                "Using cached IP location: "
+                f"{self.current_latitude},{self.current_longitude}"
             )
-            logger.info(f"GPS module initialized on {self.gps_port}")
-        except ImportError:
-            logger.warning("pyserial not available, using simulation")
-            self.use_simulation = True
-        except Exception as e:
-            logger.warning(f"GPS module init failed: {e}, using simulation")
-            self.use_simulation = True
-
-    def get_location(self) -> Tuple[str, str]:
-        """
-        Get current GPS location.
-
-        Returns:
-            Tuple: (latitude, longitude) as strings
-        """
-        if self.use_simulation:
             return self.current_latitude, self.current_longitude
 
-        try:
-            if self.gps_module and self.gps_module.is_open:
-                line = self.gps_module.readline().decode("utf-8").strip()
-                lat, lon = self._parse_nmea(line)
-                if lat and lon:
-                    self.current_latitude = lat
-                    self.current_longitude = lon
-                    self.last_fix_time = datetime.now()
-        except Exception as e:
-            logger.debug(f"GPS read error: {e}")
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                print(
+                    "Fetching IP location "
+                    f"(attempt {attempt}/{self.max_retries}) from {self.api_url}"
+                )
+                response = requests.get(self.api_url, timeout=self.timeout_seconds)
+                response.raise_for_status()
+                data = json.loads(response.text)
 
+                if data.get("status") == "fail":
+                    raise ValueError(data.get("message", "IP geolocation failed"))
+
+                latitude, longitude = self._extract_coordinates(data)
+                if latitude is None or longitude is None:
+                    raise ValueError("IP geolocation response missing coordinates")
+
+                self.current_latitude = latitude
+                self.current_longitude = longitude
+                self.last_update_time = now
+
+                print(
+                    "Updated IP location: "
+                    f"{self.current_latitude},{self.current_longitude}"
+                )
+                return self.current_latitude, self.current_longitude
+
+            except Exception as e:
+                warning = f"WARNING: IP geolocation failed: {e}"
+                print(warning)
+                logger.warning(warning)
+
+        print(
+            "WARNING: Using last known location: "
+            f"{self.current_latitude},{self.current_longitude}"
+        )
         return self.current_latitude, self.current_longitude
 
-    def get_location_string(self) -> str:
-        """
-        Get location as formatted string.
-
-        Returns:
-            Formatted location string "LAT,LON"
-        """
-        lat, lon = self.get_location()
-        return f"{lat},{lon}"
-
     @staticmethod
-    def _parse_nmea(nmea_sentence: str) -> Tuple[Optional[str], Optional[str]]:
-        """
-        Parse NMEA GPS sentence.
+    def _extract_coordinates(data: dict) -> Tuple[Optional[str], Optional[str]]:
+        """Support ip-api.com and ipinfo.io response shapes."""
+        if "lat" in data and "lon" in data:
+            return str(data["lat"]), str(data["lon"])
 
-        Args:
-            nmea_sentence: NMEA sentence string
-
-        Returns:
-            Tuple: (latitude, longitude) or (None, None)
-        """
-        try:
-            if not nmea_sentence.startswith("$GPGGA"):
-                return None, None
-
-            parts = nmea_sentence.split(",")
-            if len(parts) < 6:
-                return None, None
-
-            # Extract lat/lon from NMEA format
-            lat = parts[2]
-            lon = parts[4]
-
-            # Convert to decimal degrees if needed
-            if lat and lon:
-                return lat, lon
-        except Exception as e:
-            logger.debug(f"NMEA parse error: {e}")
+        if "loc" in data:
+            parts = str(data["loc"]).split(",", 1)
+            if len(parts) == 2 and parts[0] and parts[1]:
+                return parts[0], parts[1]
 
         return None, None
 
-    def set_simulation_location(self, latitude: str, longitude: str) -> None:
-        """
-        Set simulated location (for testing).
+    def get_location(self) -> Tuple[str, str]:
+        """Backward-compatible alias used by the detection loop."""
+        return self.get_current_location()
 
-        Args:
-            latitude: Latitude string
-            longitude: Longitude string
-        """
+    def get_location_string(self) -> str:
+        """Return location as 'LAT,LON'."""
+        lat, lon = self.get_current_location()
+        return f"{lat},{lon}"
+
+    def set_cached_location(self, latitude: str, longitude: str) -> None:
+        """Set cached location manually for tests or offline startup."""
         self.current_latitude = latitude
         self.current_longitude = longitude
-        logger.info(f"Simulation location set to: {latitude}, {longitude}")
+        self.last_update_time = time.monotonic()
+        print(f"Cached IP location set to: {latitude},{longitude}")
+        logger.info(f"Cached IP location set to: {latitude},{longitude}")
 
     def close(self) -> None:
-        """Close GPS module connection."""
-        if self.gps_module:
-            try:
-                self.gps_module.close()
-            except Exception as e:
-                logger.warning(f"Error closing GPS: {e}")
+        """No persistent hardware connection is used."""
+        return None
