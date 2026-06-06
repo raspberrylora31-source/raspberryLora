@@ -22,6 +22,7 @@ class YOLOModelLoader:
         "yolov8n": "yolov8n.pt",
     }
 
+    YOLOV5_HUB_REPO = "ultralytics/yolov5:v7.0"
     DEVICE_AUTO = "cpu"  # Force CPU for Raspberry Pi - GPU not reliable
     CONFIDENCE_THRESHOLD = 0.45
 
@@ -52,7 +53,7 @@ class YOLOModelLoader:
             if self.model_name == "yolov5n":
                 # YOLOv5 nano - ~7.5MB, ~2M params
                 self.model = torch.hub.load(
-                    "ultralytics/yolov5",
+                    self.YOLOV5_HUB_REPO,
                     "yolov5n",
                     pretrained=True,
                     force_reload=False,
@@ -91,7 +92,7 @@ class YOLOModelLoader:
     def load_model_yolov5n(self):
         """Load YOLOv5n as fallback."""
         self.model = torch.hub.load(
-            "ultralytics/yolov5",
+            self.YOLOV5_HUB_REPO,
             "yolov5n",
             pretrained=True,
             force_reload=False,

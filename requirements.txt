@@ -12,9 +12,6 @@ scipy==1.11.4
 requests==2.31.0
 websocket-client==1.6.4
 
-# Optional: Bluetooth support
-pybluez==0.23
-
 # Optional: Bluetooth Low Energy support
 bleak==0.21.1
 
