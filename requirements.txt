@@ -7,6 +7,7 @@ pyserial==3.5
 numpy==1.24.3
 Pillow==10.0.0
 scipy==1.11.4
+ipython
 
 # Optional: WiFi support
 requests==2.31.0
