@@ -50,35 +50,22 @@ class YOLOModelLoader:
         try:
             logger.info(f"Loading {self.model_name} model on {self.device}...")
 
+            # Use ultralytics YOLO for both v5 and v8 - avoids IPython dependency
+            try:
+                from ultralytics import YOLO
+            except ImportError:
+                logger.error("ultralytics package not found")
+                raise
+
             if self.model_name == "yolov5n":
                 # YOLOv5 nano - ~7.5MB, ~2M params
-                self.model = torch.hub.load(
-                    self.YOLOV5_HUB_REPO,
-                    "yolov5n",
-                    pretrained=True,
-                    force_reload=False,
-                    verbose=False,
-                )
+                # Use ultralytics which handles yolov5 models
+                self.model = YOLO("yolov5n.pt")
             elif self.model_name == "yolov8n":
                 # YOLOv8 nano - ~6.3MB, ~3.2M params
-                try:
-                    from ultralytics import YOLO
-
-                    model_path = self.model_dir / self.AVAILABLE_MODELS["yolov8n"]
-                    self.model = YOLO(str(model_path))
-                except ImportError:
-                    logger.warning(
-                        "YOLOv8 not available, falling back to YOLOv5n"
-                    )
-                    return self.load_model_yolov5n()
+                self.model = YOLO("yolov8n.pt")
             else:
                 raise ValueError(f"Unknown model: {self.model_name}")
-
-            # Set model to eval mode and move to device
-            if hasattr(self.model, "to"):
-                self.model.to(self.device)
-            if hasattr(self.model, "eval"):
-                self.model.eval()
 
             logger.info(
                 f"✓ Model loaded successfully on {self.device}"
@@ -88,19 +75,6 @@ class YOLOModelLoader:
         except Exception as e:
             logger.error(f"Failed to load model: {e}")
             raise
-
-    def load_model_yolov5n(self):
-        """Load YOLOv5n as fallback."""
-        self.model = torch.hub.load(
-            self.YOLOV5_HUB_REPO,
-            "yolov5n",
-            pretrained=True,
-            force_reload=False,
-            verbose=False,
-        )
-        self.model.to(self.device)
-        self.model.eval()
-        return self.model
 
     @staticmethod
     def get_class_indices():

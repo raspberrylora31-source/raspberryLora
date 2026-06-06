@@ -117,35 +117,34 @@ class ObjectDetector:
         }
 
         try:
-            # Preprocess frame
-            processed_frame = self.preprocess_frame(frame, target_size=416)
-
-            # Run inference
+            # Run inference directly on frame - ultralytics handles preprocessing
             with torch.no_grad():
-                results = self.model(processed_frame)
+                results = self.model(frame, verbose=False)
 
-            # Process results
-            predictions = results.pred[0] if hasattr(results, "pred") else results
-
-            # Handle different model output formats
-            if isinstance(predictions, torch.Tensor):
-                # YOLOv5 format: [x1, y1, x2, y2, conf, class]
-                for pred in predictions:
-                    if len(pred) >= 6:
-                        x1, y1, x2, y2, conf, cls = pred[:6]
-                        conf = float(conf)
-                        cls = int(cls)
-
+            # Handle ultralytics YOLO Results object
+            if results and len(results) > 0:
+                result = results[0]
+                
+                # Get boxes from results
+                if hasattr(result, "boxes"):
+                    boxes = result.boxes
+                    
+                    for box in boxes:
+                        conf = float(box.conf)
+                        cls = int(box.cls)
+                        
                         if conf >= self.confidence_threshold:
                             if cls == self.PERSON_CLASS:
                                 person_detected = True
+                                # xyxy format: [x1, y1, x2, y2]
+                                xyxy = box.xyxy[0]
                                 detections["persons"].append(
                                     {
                                         "bbox": [
-                                            float(x1),
-                                            float(y1),
-                                            float(x2),
-                                            float(y2),
+                                            float(xyxy[0]),
+                                            float(xyxy[1]),
+                                            float(xyxy[2]),
+                                            float(xyxy[3]),
                                         ],
                                         "confidence": conf,
                                     }

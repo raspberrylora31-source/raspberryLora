@@ -1,0 +1,416 @@
+2026-06-06 13:47:35 - __main__ - INFO - Initializing detection system...
+2026-06-06 13:47:35 - detector.model_loader - INFO - Loading yolov5n model on cpu...
+2026-06-06 13:47:42 - matplotlib.font_manager - INFO - Failed to extract font properties from /usr/share/fonts/opentype/cantarell/Cantarell-VF.otf: Can not load face (SFNT font table missing; error code 0x8e)
+2026-06-06 13:47:42 - matplotlib.font_manager - INFO - generated new fontManager
+2026-06-06 13:47:44 - detector.model_loader - ERROR - Failed to load model: cannot import name 'torch_load' from 'ultralytics.utils.patches' (/home/lora/.pyenv/versions/3.11.11/lib/python3.11/site-packages/ultralytics/utils/patches.py)
+2026-06-06 13:47:44 - utils.logger - ERROR - System initialization error: cannot import name 'torch_load' from 'ultralytics.utils.patches' (/home/lora/.pyenv/versions/3.11.11/lib/python3.11/site-packages/ultralytics/utils/patches.py)
+2026-06-06 13:56:54 - __main__ - INFO - Initializing detection system...
+2026-06-06 13:56:54 - detector.model_loader - INFO - Loading yolov5n model on cpu...
+2026-06-06 13:56:59 - detector.model_loader - ERROR - Failed to load model: No module named 'IPython'
+2026-06-06 13:56:59 - utils.logger - ERROR - System initialization error: No module named 'IPython'
+2026-06-06 16:56:12 - __main__ - INFO - Initializing detection system...
+2026-06-06 16:56:12 - detector.model_loader - INFO - Loading yolov5n model on cpu...
+2026-06-06 16:56:13 - detector.model_loader - ERROR - Failed to load model: No module named 'IPython'
+2026-06-06 16:56:13 - utils.logger - ERROR - System initialization error: No module named 'IPython'
+2026-06-06 16:58:09 - __main__ - INFO - Initializing detection system...
+2026-06-06 16:58:09 - detector.model_loader - INFO - Loading yolov5n model on cpu...
+2026-06-06 16:58:12 - detector.model_loader - ERROR - Failed to load model: No module named 'IPython'
+2026-06-06 16:58:12 - utils.logger - ERROR - System initialization error: No module named 'IPython'
+2026-06-06 17:01:23 - __main__ - INFO - Initializing detection system...
+2026-06-06 17:01:23 - detector.model_loader - INFO - Loading yolov5n model on cpu...
+2026-06-06 17:01:25 - detector.model_loader - ERROR - Failed to load model: No module named 'IPython'
+2026-06-06 17:01:25 - utils.logger - ERROR - System initialization error: No module named 'IPython'
+2026-06-06 17:02:43 - __main__ - INFO - Initializing detection system...
+2026-06-06 17:02:43 - detector.model_loader - INFO - Loading yolov5n model on cpu...
+2026-06-06 17:02:45 - detector.model_loader - ERROR - Failed to load model: No module named 'IPython'
+2026-06-06 17:02:45 - utils.logger - ERROR - System initialization error: No module named 'IPython'
+2026-06-06 17:04:26 - __main__ - INFO - Initializing detection system...
+2026-06-06 17:04:26 - detector.model_loader - INFO - Loading yolov5n model on cpu...
+2026-06-06 17:04:38 - detector.model_loader - INFO - ✓ Model loaded successfully on cpu
+2026-06-06 17:04:38 - detector.detect - INFO - Detector initialized: threshold=0.45, skip=2
+2026-06-06 17:04:38 - __main__ - INFO - ✓ Camera initialized (ID: 0, 640x480)
+2026-06-06 17:04:38 - lora.serial_handler - INFO - Communication handler initialized for UART
+2026-06-06 17:04:38 - lora.send_lora - INFO - LoRaMessenger initialized (cooldown: 30s)
+2026-06-06 17:04:38 - utils.gps - INFO - GPS Handler: Using GPS module on /dev/ttyUSB1
+2026-06-06 17:04:38 - utils.gps - WARNING - GPS module init failed: [Errno 2] could not open port /dev/ttyUSB1: [Errno 2] No such file or directory: '/dev/ttyUSB1', using simulation
+2026-06-06 17:04:38 - utils.logger - INFO - System started at 2026-06-06 17:04:38
+Config: {'model': 'yolov5n', 'camera_id': 0, 'confidence': 0.45, 'skip_frames': 2, 'camera_size': (640, 480), 'use_gps': True, 'lora_connection': 'uart', 'lora_port': '/dev/ttyUSB0', 'lora_wifi_host': '192.168.1.100', 'lora_wifi_port': 8080, 'lora_cooldown': 30, 'enable_display': False}
+2026-06-06 17:04:38 - utils.logger - INFO - System started at 2026-06-06 17:04:38
+Config: {'model': 'yolov5n', 'camera_id': 0, 'confidence': 0.45, 'skip_frames': 2, 'camera_size': (640, 480), 'use_gps': True, 'lora_connection': 'uart', 'lora_port': '/dev/ttyUSB0', 'lora_wifi_host': '192.168.1.100', 'lora_wifi_port': 8080, 'lora_cooldown': 30, 'enable_display': False}
+2026-06-06 17:04:38 - __main__ - INFO - Starting detection loop...
+2026-06-06 17:04:38 - __main__ - INFO - Starting detection loop...
+2026-06-06 17:04:44 - __main__ - INFO - Shutdown signal received
+2026-06-06 17:04:44 - __main__ - INFO - Shutdown signal received
+2026-06-06 17:04:44 - __main__ - INFO - Shutting down detection system...
+2026-06-06 17:04:44 - __main__ - INFO - Shutting down detection system...
+2026-06-06 17:04:44 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 17:04:44 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 17:04:44 - __main__ - INFO - ✓ System shutdown complete
+2026-06-06 17:04:44 - __main__ - INFO - ✓ System shutdown complete
+2026-06-06 17:04:47 - __main__ - INFO - Shutting down detection system...
+2026-06-06 17:04:47 - __main__ - INFO - Shutting down detection system...
+2026-06-06 17:04:47 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 17:04:47 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 17:04:47 - __main__ - INFO - ✓ System shutdown complete
+2026-06-06 17:04:47 - __main__ - INFO - ✓ System shutdown complete
+2026-06-06 17:06:31 - __main__ - INFO - Initializing detection system...
+2026-06-06 17:06:31 - detector.model_loader - INFO - Loading yolov5n model on cpu...
+2026-06-06 17:07:00 - __main__ - INFO - Initializing detection system...
+2026-06-06 17:07:00 - detector.model_loader - INFO - Loading yolov5n model on cpu...
+2026-06-06 17:07:23 - __main__ - INFO - Initializing detection system...
+2026-06-06 17:07:23 - detector.model_loader - INFO - Loading yolov5n model on cpu...
+2026-06-06 17:08:12 - __main__ - INFO - Initializing detection system...
+2026-06-06 17:08:12 - detector.model_loader - INFO - Loading yolov5n model on cpu...
+2026-06-06 17:09:55 - utils.logger - INFO - System started at 2026-06-06 17:09:55
+Config: {'model': 'yolov5n', 'camera_id': 0, 'confidence': 0.45, 'skip_frames': 2, 'camera_size': (640, 480), 'use_gps': True, 'lora_connection': 'uart', 'lora_port': '/dev/ttyUSB0', 'lora_wifi_host': '192.168.1.100', 'lora_wifi_port': 8080, 'lora_cooldown': 30, 'enable_display': False}
+2026-06-06 17:11:57 - __main__ - INFO - Initializing detection system...
+2026-06-06 17:11:57 - detector.model_loader - INFO - Loading yolov5n model on cpu...
+2026-06-06 17:12:01 - detector.model_loader - INFO - ✓ Model loaded successfully on cpu
+2026-06-06 17:12:01 - detector.detect - INFO - Detector initialized: threshold=0.45, skip=2
+2026-06-06 17:12:01 - __main__ - INFO - ✓ Camera initialized (ID: 0, 640x480)
+2026-06-06 17:12:01 - lora.serial_handler - INFO - Communication handler initialized for UART
+2026-06-06 17:12:01 - lora.send_lora - INFO - LoRaMessenger initialized (cooldown: 30s)
+2026-06-06 17:12:01 - utils.gps - INFO - GPS Handler: Using simulated location mode
+2026-06-06 17:12:01 - utils.gps - INFO - Simulated location: 0.0000, 0.0000
+2026-06-06 17:12:01 - utils.logger - INFO - System started at 2026-06-06 17:12:01
+Config: {'model': 'yolov5n', 'camera_id': 0, 'confidence': 0.45, 'skip_frames': 2, 'camera_size': (640, 480), 'use_gps': True, 'lora_connection': 'uart', 'lora_port': '/dev/ttyUSB0', 'lora_wifi_host': '192.168.1.100', 'lora_wifi_port': 8080, 'lora_cooldown': 30, 'enable_display': True}
+2026-06-06 17:12:01 - utils.logger - INFO - System started at 2026-06-06 17:12:01
+Config: {'model': 'yolov5n', 'camera_id': 0, 'confidence': 0.45, 'skip_frames': 2, 'camera_size': (640, 480), 'use_gps': True, 'lora_connection': 'uart', 'lora_port': '/dev/ttyUSB0', 'lora_wifi_host': '192.168.1.100', 'lora_wifi_port': 8080, 'lora_cooldown': 30, 'enable_display': True}
+2026-06-06 17:12:01 - __main__ - INFO - Starting detection loop...
+2026-06-06 17:12:01 - __main__ - INFO - Starting detection loop...
+2026-06-06 17:12:05 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:12:05 | Location: 0.0000,0.0000
+2026-06-06 17:12:05 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:12:05 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:12:05
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:12:05 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:12:05 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:12:06 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:12:06 | Location: 0.0000,0.0000
+2026-06-06 17:12:06 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:12:06 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:12:06
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:12:06 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:12:06 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:12:08 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:12:08 | Location: 0.0000,0.0000
+2026-06-06 17:12:08 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:12:08 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:12:08
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:12:08 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:12:08 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:12:10 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:12:10 | Location: 0.0000,0.0000
+2026-06-06 17:12:10 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:12:10 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:12:10
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:12:10 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:12:10 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:12:11 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:12:11 | Location: 0.0000,0.0000
+2026-06-06 17:12:11 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:12:11 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:12:11
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:12:11 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:12:11 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:12:13 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:12:13 | Location: 0.0000,0.0000
+2026-06-06 17:12:13 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:12:13 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:12:13
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:12:13 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:12:13 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:12:18 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:12:18 | Location: 0.0000,0.0000
+2026-06-06 17:12:18 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:12:18 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:12:18
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:12:18 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:12:18 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:12:20 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:12:20 | Location: 0.0000,0.0000
+2026-06-06 17:12:20 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:12:20 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:12:20
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:12:20 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:12:20 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:12:22 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:12:22 | Location: 0.0000,0.0000
+2026-06-06 17:12:22 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:12:22 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:12:22
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:12:22 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:12:22 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:12:24 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:12:24 | Location: 0.0000,0.0000
+2026-06-06 17:12:24 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:12:24 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:12:24
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:12:24 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:12:24 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:12:25 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:12:25 | Location: 0.0000,0.0000
+2026-06-06 17:12:25 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:12:25 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:12:25
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:12:25 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:12:25 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:12:27 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:12:27 | Location: 0.0000,0.0000
+2026-06-06 17:12:27 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:12:27 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:12:27
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:12:27 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:12:27 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:12:29 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:12:29 | Location: 0.0000,0.0000
+2026-06-06 17:12:29 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:12:29 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:12:29
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:12:29 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:12:29 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:12:30 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:12:30 | Location: 0.0000,0.0000
+2026-06-06 17:12:30 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:12:30 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:12:30
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:12:30 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:12:30 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:12:31 - __main__ - INFO - Shutdown signal received
+2026-06-06 17:12:31 - __main__ - INFO - Shutdown signal received
+2026-06-06 17:12:31 - __main__ - INFO - Shutting down detection system...
+2026-06-06 17:12:31 - __main__ - INFO - Shutting down detection system...
+2026-06-06 17:12:31 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 17:12:31 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 17:12:31 - __main__ - INFO - ✓ System shutdown complete
+2026-06-06 17:12:31 - __main__ - INFO - ✓ System shutdown complete
+2026-06-06 17:12:31 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:12:31 | Location: 0.0000,0.0000
+2026-06-06 17:12:31 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:12:31 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:12:31
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:12:31 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:12:31 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:12:31 - __main__ - INFO - Shutting down detection system...
+2026-06-06 17:12:31 - __main__ - INFO - Shutting down detection system...
+2026-06-06 17:12:31 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 17:12:31 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 17:12:31 - __main__ - INFO - ✓ System shutdown complete
+2026-06-06 17:12:31 - __main__ - INFO - ✓ System shutdown complete
+2026-06-06 17:13:38 - __main__ - INFO - Initializing detection system...
+2026-06-06 17:13:38 - detector.model_loader - INFO - Loading yolov5n model on cpu...
+2026-06-06 17:13:43 - detector.model_loader - INFO - ✓ Model loaded successfully on cpu
+2026-06-06 17:13:43 - detector.detect - INFO - Detector initialized: threshold=0.45, skip=1
+2026-06-06 17:13:43 - __main__ - INFO - ✓ Camera initialized (ID: 0, 640x480)
+2026-06-06 17:13:43 - lora.serial_handler - INFO - Communication handler initialized for UART
+2026-06-06 17:13:43 - lora.send_lora - INFO - LoRaMessenger initialized (cooldown: 30s)
+2026-06-06 17:13:43 - utils.gps - INFO - GPS Handler: Using GPS module on /dev/ttyUSB1
+2026-06-06 17:13:43 - utils.gps - WARNING - GPS module init failed: [Errno 2] could not open port /dev/ttyUSB1: [Errno 2] No such file or directory: '/dev/ttyUSB1', using simulation
+2026-06-06 17:13:43 - utils.logger - INFO - System started at 2026-06-06 17:13:43
+Config: {'model': 'yolov5n', 'camera_id': 0, 'confidence': 0.45, 'skip_frames': 1, 'camera_size': (640, 480), 'use_gps': True, 'lora_connection': 'uart', 'lora_port': '/dev/ttyUSB0', 'lora_wifi_host': '192.168.1.100', 'lora_wifi_port': 8080, 'lora_cooldown': 30, 'enable_display': True}
+2026-06-06 17:13:43 - utils.logger - INFO - System started at 2026-06-06 17:13:43
+Config: {'model': 'yolov5n', 'camera_id': 0, 'confidence': 0.45, 'skip_frames': 1, 'camera_size': (640, 480), 'use_gps': True, 'lora_connection': 'uart', 'lora_port': '/dev/ttyUSB0', 'lora_wifi_host': '192.168.1.100', 'lora_wifi_port': 8080, 'lora_cooldown': 30, 'enable_display': True}
+2026-06-06 17:13:43 - __main__ - INFO - Starting detection loop...
+2026-06-06 17:13:43 - __main__ - INFO - Starting detection loop...
+2026-06-06 17:13:47 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:13:47 | Location: 0.0000,0.0000
+2026-06-06 17:13:47 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:13:47 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:13:47
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:13:47 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:13:47 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:13:51 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:13:51 | Location: 0.0000,0.0000
+2026-06-06 17:13:51 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:13:51 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:13:51
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:13:51 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:13:51 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:13:53 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:13:53 | Location: 0.0000,0.0000
+2026-06-06 17:13:53 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:13:53 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:13:53
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:13:53 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:13:53 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:13:55 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:13:55 | Location: 0.0000,0.0000
+2026-06-06 17:13:55 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:13:55 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:13:55
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:13:55 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:13:55 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:13:57 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:13:57 | Location: 0.0000,0.0000
+2026-06-06 17:13:57 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:13:57 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:13:57
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:13:57 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:13:57 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:13:59 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:13:59 | Location: 0.0000,0.0000
+2026-06-06 17:13:59 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:13:59 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:13:59
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:13:59 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:13:59 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:14:01 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:14:01 | Location: 0.0000,0.0000
+2026-06-06 17:14:01 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:14:01 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:14:01
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:14:01 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:14:01 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:14:03 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:14:03 | Location: 0.0000,0.0000
+2026-06-06 17:14:03 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:14:03 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:14:03
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:14:03 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:14:03 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:14:05 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:14:05 | Location: 0.0000,0.0000
+2026-06-06 17:14:05 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:14:05 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:14:05
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:14:05 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:14:05 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:14:07 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:14:07 | Location: 0.0000,0.0000
+2026-06-06 17:14:07 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:14:07 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:14:07
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:14:07 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:14:07 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:14:15 - __main__ - INFO - Shutdown signal received
+2026-06-06 17:14:15 - __main__ - INFO - Shutdown signal received
+2026-06-06 17:14:15 - __main__ - INFO - Shutting down detection system...
+2026-06-06 17:14:15 - __main__ - INFO - Shutting down detection system...
+2026-06-06 17:14:15 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 17:14:15 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 17:14:15 - __main__ - INFO - ✓ System shutdown complete
+2026-06-06 17:14:15 - __main__ - INFO - ✓ System shutdown complete
+2026-06-06 17:14:18 - __main__ - INFO - Shutting down detection system...
+2026-06-06 17:14:18 - __main__ - INFO - Shutting down detection system...
+2026-06-06 17:14:18 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 17:14:18 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 17:14:18 - __main__ - INFO - ✓ System shutdown complete
+2026-06-06 17:14:18 - __main__ - INFO - ✓ System shutdown complete
+2026-06-06 17:34:47 - __main__ - INFO - Initializing detection system...
+2026-06-06 17:34:47 - detector.model_loader - INFO - Loading yolov5n model on cpu...
+2026-06-06 17:34:51 - detector.model_loader - INFO - ✓ Model loaded successfully on cpu
+2026-06-06 17:34:51 - detector.detect - INFO - Detector initialized: threshold=0.45, skip=1
+2026-06-06 17:34:51 - __main__ - INFO - ✓ Camera initialized (ID: 0, 640x480)
+2026-06-06 17:34:51 - lora.serial_handler - INFO - Communication handler initialized for UART
+2026-06-06 17:34:51 - lora.send_lora - INFO - LoRaMessenger initialized (cooldown: 30s)
+2026-06-06 17:34:51 - utils.gps - INFO - GPS Handler: Using GPS module on /dev/ttyUSB1
+2026-06-06 17:34:51 - utils.gps - WARNING - GPS module init failed: [Errno 2] could not open port /dev/ttyUSB1: [Errno 2] No such file or directory: '/dev/ttyUSB1', using simulation
+2026-06-06 17:34:51 - utils.logger - INFO - System started at 2026-06-06 17:34:51
+Config: {'model': 'yolov5n', 'camera_id': 0, 'confidence': 0.45, 'skip_frames': 1, 'camera_size': (640, 480), 'use_gps': True, 'lora_connection': 'uart', 'lora_port': '/dev/ttyUSB0', 'lora_wifi_host': '192.168.1.100', 'lora_wifi_port': 8080, 'lora_cooldown': 30, 'enable_display': True}
+2026-06-06 17:34:51 - utils.logger - INFO - System started at 2026-06-06 17:34:51
+Config: {'model': 'yolov5n', 'camera_id': 0, 'confidence': 0.45, 'skip_frames': 1, 'camera_size': (640, 480), 'use_gps': True, 'lora_connection': 'uart', 'lora_port': '/dev/ttyUSB0', 'lora_wifi_host': '192.168.1.100', 'lora_wifi_port': 8080, 'lora_cooldown': 30, 'enable_display': True}
+2026-06-06 17:34:51 - __main__ - INFO - Starting detection loop...
+2026-06-06 17:34:51 - __main__ - INFO - Starting detection loop...
+2026-06-06 17:34:55 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:34:55 | Location: 0.0000,0.0000
+2026-06-06 17:34:55 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:34:55 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:34:55
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:34:55 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:34:55 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:34:56 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:34:56 | Location: 0.0000,0.0000
+2026-06-06 17:34:56 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:34:56 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:34:56
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:34:56 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:34:56 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:34:59 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:34:59 | Location: 0.0000,0.0000
+2026-06-06 17:34:59 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:34:59 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:34:59
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:34:59 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:34:59 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:35:02 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:35:02 | Location: 0.0000,0.0000
+2026-06-06 17:35:02 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:35:02 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:35:02
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:35:02 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:35:02 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:35:04 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:35:04 | Location: 0.0000,0.0000
+2026-06-06 17:35:04 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:35:04 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:35:04
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:35:04 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:35:04 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:35:05 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:35:05 | Location: 0.0000,0.0000
+2026-06-06 17:35:05 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:35:05 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:35:05
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:35:05 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:35:05 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:35:06 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:35:06 | Location: 0.0000,0.0000
+2026-06-06 17:35:06 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:35:06 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:35:06
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:35:06 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:35:06 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:35:07 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:35:07 | Location: 0.0000,0.0000
+2026-06-06 17:35:07 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 17:35:07 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 17:35:07
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 17:35:07 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:35:07 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 17:35:25 - __main__ - INFO - Shutdown signal received
+2026-06-06 17:35:25 - __main__ - INFO - Shutdown signal received
+2026-06-06 17:35:25 - __main__ - INFO - Shutting down detection system...
+2026-06-06 17:35:25 - __main__ - INFO - Shutting down detection system...
+2026-06-06 17:35:25 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 17:35:25 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 17:35:25 - __main__ - INFO - ✓ System shutdown complete
+2026-06-06 17:35:25 - __main__ - INFO - ✓ System shutdown complete
+2026-06-06 17:35:26 - __main__ - INFO - Shutting down detection system...
+2026-06-06 17:35:26 - __main__ - INFO - Shutting down detection system...
+2026-06-06 17:35:26 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 17:35:26 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 17:35:26 - __main__ - INFO - ✓ System shutdown complete
+2026-06-06 17:35:26 - __main__ - INFO - ✓ System shutdown complete
