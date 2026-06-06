@@ -72,6 +72,12 @@ Run with camera display:
 python main.py --display
 ```
 
+Pi-tested run command:
+
+```bash
+python main.py --model yolov5n --skip-frames 1 --confidence 0.45 --display
+```
+
 Run with explicit serial port and IP location settings:
 
 ```bash
