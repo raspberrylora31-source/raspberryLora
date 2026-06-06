@@ -1,0 +1,416 @@
+2026-06-06 18:10:24 - __main__ - INFO - Initializing detection system...
+2026-06-06 18:10:24 - detector.model_loader - INFO - Loading yolov5n model on cpu...
+2026-06-06 18:10:27 - detector.model_loader - INFO - ✓ Model loaded successfully on cpu
+2026-06-06 18:10:27 - detector.detect - INFO - Detector initialized: threshold=0.45, skip=1
+2026-06-06 18:10:28 - __main__ - INFO - ✓ Camera initialized (ID: 0, 640x480)
+2026-06-06 18:10:28 - lora.serial_handler - INFO - Communication handler initialized for UART
+2026-06-06 18:10:28 - lora.send_lora - INFO - LoRaMessenger initialized (cooldown: 30s)
+2026-06-06 18:10:28 - utils.gps - INFO - IP geolocation initialized: interval=25s timeout=3.0s retries=2 api=http://ip-api.com/json/
+2026-06-06 18:10:28 - utils.logger - INFO - System started at 2026-06-06 18:10:28
+Config: {'model': 'yolov5n', 'camera_id': 0, 'confidence': 0.45, 'skip_frames': 1, 'camera_size': (640, 480), 'lora_connection': 'uart', 'lora_port': '/dev/ttyUSB0', 'lora_wifi_host': '192.168.1.100', 'lora_wifi_port': 8080, 'lora_cooldown': 30, 'location_update_interval': 25, 'location_timeout': 3.0, 'location_retries': 2, 'location_api_url': 'http://ip-api.com/json/', 'enable_display': True}
+2026-06-06 18:10:28 - utils.logger - INFO - System started at 2026-06-06 18:10:28
+Config: {'model': 'yolov5n', 'camera_id': 0, 'confidence': 0.45, 'skip_frames': 1, 'camera_size': (640, 480), 'lora_connection': 'uart', 'lora_port': '/dev/ttyUSB0', 'lora_wifi_host': '192.168.1.100', 'lora_wifi_port': 8080, 'lora_cooldown': 30, 'location_update_interval': 25, 'location_timeout': 3.0, 'location_retries': 2, 'location_api_url': 'http://ip-api.com/json/', 'enable_display': True}
+2026-06-06 18:10:28 - __main__ - INFO - Starting detection loop...
+2026-06-06 18:10:28 - __main__ - INFO - Starting detection loop...
+2026-06-06 18:10:36 - utils.gps - WARNING - WARNING: IP geolocation failed: HTTPConnectionPool(host='ip-api.com', port=80): Max retries exceeded with url: /json/ (Caused by ConnectTimeoutError(<HTTPConnection(host='ip-api.com', port=80) at 0x7f60da7410>, 'Connection to ip-api.com timed out. (connect timeout=3.0)'))
+2026-06-06 18:10:36 - utils.gps - WARNING - WARNING: IP geolocation failed: HTTPConnectionPool(host='ip-api.com', port=80): Max retries exceeded with url: /json/ (Caused by ConnectTimeoutError(<HTTPConnection(host='ip-api.com', port=80) at 0x7f60da7410>, 'Connection to ip-api.com timed out. (connect timeout=3.0)'))
+2026-06-06 18:10:39 - utils.gps - WARNING - WARNING: IP geolocation failed: HTTPConnectionPool(host='ip-api.com', port=80): Max retries exceeded with url: /json/ (Caused by ConnectTimeoutError(<HTTPConnection(host='ip-api.com', port=80) at 0x7f60db9790>, 'Connection to ip-api.com timed out. (connect timeout=3.0)'))
+2026-06-06 18:10:39 - utils.gps - WARNING - WARNING: IP geolocation failed: HTTPConnectionPool(host='ip-api.com', port=80): Max retries exceeded with url: /json/ (Caused by ConnectTimeoutError(<HTTPConnection(host='ip-api.com', port=80) at 0x7f60db9790>, 'Connection to ip-api.com timed out. (connect timeout=3.0)'))
+2026-06-06 18:10:39 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:10:39 | Location: 0.0000,0.0000
+2026-06-06 18:10:39 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:10:39 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:10:39
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 18:10:39 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:10:39 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:10:43 - utils.gps - WARNING - WARNING: IP geolocation failed: HTTPConnectionPool(host='ip-api.com', port=80): Max retries exceeded with url: /json/ (Caused by ConnectTimeoutError(<HTTPConnection(host='ip-api.com', port=80) at 0x7f60da6950>, 'Connection to ip-api.com timed out. (connect timeout=3.0)'))
+2026-06-06 18:10:43 - utils.gps - WARNING - WARNING: IP geolocation failed: HTTPConnectionPool(host='ip-api.com', port=80): Max retries exceeded with url: /json/ (Caused by ConnectTimeoutError(<HTTPConnection(host='ip-api.com', port=80) at 0x7f60da6950>, 'Connection to ip-api.com timed out. (connect timeout=3.0)'))
+2026-06-06 18:10:46 - utils.gps - WARNING - WARNING: IP geolocation failed: HTTPConnectionPool(host='ip-api.com', port=80): Max retries exceeded with url: /json/ (Caused by ConnectTimeoutError(<HTTPConnection(host='ip-api.com', port=80) at 0x7f60db9490>, 'Connection to ip-api.com timed out. (connect timeout=3.0)'))
+2026-06-06 18:10:46 - utils.gps - WARNING - WARNING: IP geolocation failed: HTTPConnectionPool(host='ip-api.com', port=80): Max retries exceeded with url: /json/ (Caused by ConnectTimeoutError(<HTTPConnection(host='ip-api.com', port=80) at 0x7f60db9490>, 'Connection to ip-api.com timed out. (connect timeout=3.0)'))
+2026-06-06 18:10:46 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:10:46 | Location: 0.0000,0.0000
+2026-06-06 18:10:46 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:10:46 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:10:46
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 18:10:46 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:10:46 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:10:50 - utils.gps - WARNING - WARNING: IP geolocation failed: HTTPConnectionPool(host='ip-api.com', port=80): Max retries exceeded with url: /json/ (Caused by ConnectTimeoutError(<HTTPConnection(host='ip-api.com', port=80) at 0x7f60dc8090>, 'Connection to ip-api.com timed out. (connect timeout=3.0)'))
+2026-06-06 18:10:50 - utils.gps - WARNING - WARNING: IP geolocation failed: HTTPConnectionPool(host='ip-api.com', port=80): Max retries exceeded with url: /json/ (Caused by ConnectTimeoutError(<HTTPConnection(host='ip-api.com', port=80) at 0x7f60dc8090>, 'Connection to ip-api.com timed out. (connect timeout=3.0)'))
+2026-06-06 18:10:53 - utils.gps - WARNING - WARNING: IP geolocation failed: HTTPConnectionPool(host='ip-api.com', port=80): Max retries exceeded with url: /json/ (Caused by ConnectTimeoutError(<HTTPConnection(host='ip-api.com', port=80) at 0x7f60dca090>, 'Connection to ip-api.com timed out. (connect timeout=3.0)'))
+2026-06-06 18:10:53 - utils.gps - WARNING - WARNING: IP geolocation failed: HTTPConnectionPool(host='ip-api.com', port=80): Max retries exceeded with url: /json/ (Caused by ConnectTimeoutError(<HTTPConnection(host='ip-api.com', port=80) at 0x7f60dca090>, 'Connection to ip-api.com timed out. (connect timeout=3.0)'))
+2026-06-06 18:10:53 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:10:53 | Location: 0.0000,0.0000
+2026-06-06 18:10:53 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:10:53 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:10:53
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 18:10:53 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:10:53 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:10:57 - utils.gps - WARNING - WARNING: IP geolocation failed: HTTPConnectionPool(host='ip-api.com', port=80): Max retries exceeded with url: /json/ (Caused by ConnectTimeoutError(<HTTPConnection(host='ip-api.com', port=80) at 0x7f60dd02d0>, 'Connection to ip-api.com timed out. (connect timeout=3.0)'))
+2026-06-06 18:10:57 - utils.gps - WARNING - WARNING: IP geolocation failed: HTTPConnectionPool(host='ip-api.com', port=80): Max retries exceeded with url: /json/ (Caused by ConnectTimeoutError(<HTTPConnection(host='ip-api.com', port=80) at 0x7f60dd02d0>, 'Connection to ip-api.com timed out. (connect timeout=3.0)'))
+2026-06-06 18:11:00 - utils.gps - WARNING - WARNING: IP geolocation failed: HTTPConnectionPool(host='ip-api.com', port=80): Max retries exceeded with url: /json/ (Caused by ConnectTimeoutError(<HTTPConnection(host='ip-api.com', port=80) at 0x7f60dcb250>, 'Connection to ip-api.com timed out. (connect timeout=3.0)'))
+2026-06-06 18:11:00 - utils.gps - WARNING - WARNING: IP geolocation failed: HTTPConnectionPool(host='ip-api.com', port=80): Max retries exceeded with url: /json/ (Caused by ConnectTimeoutError(<HTTPConnection(host='ip-api.com', port=80) at 0x7f60dcb250>, 'Connection to ip-api.com timed out. (connect timeout=3.0)'))
+2026-06-06 18:11:00 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:11:00 | Location: 0.0000,0.0000
+2026-06-06 18:11:00 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:11:00 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:11:00
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 18:11:00 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:11:00 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:11:05 - utils.gps - WARNING - WARNING: IP geolocation failed: HTTPConnectionPool(host='ip-api.com', port=80): Max retries exceeded with url: /json/ (Caused by ConnectTimeoutError(<HTTPConnection(host='ip-api.com', port=80) at 0x7f60dc9150>, 'Connection to ip-api.com timed out. (connect timeout=3.0)'))
+2026-06-06 18:11:05 - utils.gps - WARNING - WARNING: IP geolocation failed: HTTPConnectionPool(host='ip-api.com', port=80): Max retries exceeded with url: /json/ (Caused by ConnectTimeoutError(<HTTPConnection(host='ip-api.com', port=80) at 0x7f60dc9150>, 'Connection to ip-api.com timed out. (connect timeout=3.0)'))
+2026-06-06 18:11:08 - utils.gps - WARNING - WARNING: IP geolocation failed: HTTPConnectionPool(host='ip-api.com', port=80): Max retries exceeded with url: /json/ (Caused by ConnectTimeoutError(<HTTPConnection(host='ip-api.com', port=80) at 0x7f60dbbe90>, 'Connection to ip-api.com timed out. (connect timeout=3.0)'))
+2026-06-06 18:11:08 - utils.gps - WARNING - WARNING: IP geolocation failed: HTTPConnectionPool(host='ip-api.com', port=80): Max retries exceeded with url: /json/ (Caused by ConnectTimeoutError(<HTTPConnection(host='ip-api.com', port=80) at 0x7f60dbbe90>, 'Connection to ip-api.com timed out. (connect timeout=3.0)'))
+2026-06-06 18:11:08 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:11:08 | Location: 0.0000,0.0000
+2026-06-06 18:11:08 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:11:08 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:11:08
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 18:11:08 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:11:08 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:11:09 - __main__ - INFO - Shutdown signal received
+2026-06-06 18:11:09 - __main__ - INFO - Shutdown signal received
+2026-06-06 18:11:09 - __main__ - INFO - Shutting down detection system...
+2026-06-06 18:11:09 - __main__ - INFO - Shutting down detection system...
+2026-06-06 18:11:09 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 18:11:09 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 18:11:09 - __main__ - INFO - ✓ System shutdown complete
+2026-06-06 18:11:09 - __main__ - INFO - ✓ System shutdown complete
+2026-06-06 18:11:14 - utils.gps - WARNING - WARNING: IP geolocation failed: HTTPConnectionPool(host='ip-api.com', port=80): Max retries exceeded with url: /json/ (Caused by ConnectTimeoutError(<HTTPConnection(host='ip-api.com', port=80) at 0x7f60db9810>, 'Connection to ip-api.com timed out. (connect timeout=3.0)'))
+2026-06-06 18:11:14 - utils.gps - WARNING - WARNING: IP geolocation failed: HTTPConnectionPool(host='ip-api.com', port=80): Max retries exceeded with url: /json/ (Caused by ConnectTimeoutError(<HTTPConnection(host='ip-api.com', port=80) at 0x7f60db9810>, 'Connection to ip-api.com timed out. (connect timeout=3.0)'))
+2026-06-06 18:11:16 - __main__ - INFO - Shutdown signal received
+2026-06-06 18:11:16 - __main__ - INFO - Shutdown signal received
+2026-06-06 18:11:16 - __main__ - INFO - Shutting down detection system...
+2026-06-06 18:11:16 - __main__ - INFO - Shutting down detection system...
+2026-06-06 18:11:16 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 18:11:16 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 18:11:16 - __main__ - INFO - ✓ System shutdown complete
+2026-06-06 18:11:16 - __main__ - INFO - ✓ System shutdown complete
+2026-06-06 18:11:17 - utils.gps - WARNING - WARNING: IP geolocation failed: HTTPConnectionPool(host='ip-api.com', port=80): Max retries exceeded with url: /json/ (Caused by ConnectTimeoutError(<HTTPConnection(host='ip-api.com', port=80) at 0x7f60da5f10>, 'Connection to ip-api.com timed out. (connect timeout=3.0)'))
+2026-06-06 18:11:17 - utils.gps - WARNING - WARNING: IP geolocation failed: HTTPConnectionPool(host='ip-api.com', port=80): Max retries exceeded with url: /json/ (Caused by ConnectTimeoutError(<HTTPConnection(host='ip-api.com', port=80) at 0x7f60da5f10>, 'Connection to ip-api.com timed out. (connect timeout=3.0)'))
+2026-06-06 18:11:17 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:11:17 | Location: 0.0000,0.0000
+2026-06-06 18:11:17 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:11:17 | Location: 0.0000,0.0000
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:11:17
+Location: 0.0000,0.0000
+============================================================
+2026-06-06 18:11:17 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:11:17 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:11:17 - __main__ - INFO - Shutting down detection system...
+2026-06-06 18:11:17 - __main__ - INFO - Shutting down detection system...
+2026-06-06 18:11:17 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 18:11:17 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 18:11:17 - __main__ - INFO - ✓ System shutdown complete
+2026-06-06 18:11:17 - __main__ - INFO - ✓ System shutdown complete
+2026-06-06 18:14:04 - __main__ - INFO - Initializing detection system...
+2026-06-06 18:14:04 - detector.model_loader - INFO - Loading yolov5n model on cpu...
+2026-06-06 18:14:07 - detector.model_loader - INFO - ✓ Model loaded successfully on cpu
+2026-06-06 18:14:07 - detector.detect - INFO - Detector initialized: threshold=0.45, skip=1
+2026-06-06 18:14:07 - __main__ - INFO - ✓ Camera initialized (ID: 0, 640x480)
+2026-06-06 18:14:07 - lora.serial_handler - INFO - Communication handler initialized for UART
+2026-06-06 18:14:07 - lora.send_lora - INFO - LoRaMessenger initialized (cooldown: 30s)
+2026-06-06 18:14:07 - utils.gps - INFO - IP geolocation initialized: interval=25s timeout=3.0s retries=2 api=https://ipinfo.io/json
+2026-06-06 18:14:07 - utils.logger - INFO - System started at 2026-06-06 18:14:07
+Config: {'model': 'yolov5n', 'camera_id': 0, 'confidence': 0.45, 'skip_frames': 1, 'camera_size': (640, 480), 'lora_connection': 'uart', 'lora_port': '/dev/ttyUSB0', 'lora_wifi_host': '192.168.1.100', 'lora_wifi_port': 8080, 'lora_cooldown': 30, 'location_update_interval': 25, 'location_timeout': 3.0, 'location_retries': 2, 'location_api_url': 'https://ipinfo.io/json', 'enable_display': True}
+2026-06-06 18:14:07 - utils.logger - INFO - System started at 2026-06-06 18:14:07
+Config: {'model': 'yolov5n', 'camera_id': 0, 'confidence': 0.45, 'skip_frames': 1, 'camera_size': (640, 480), 'lora_connection': 'uart', 'lora_port': '/dev/ttyUSB0', 'lora_wifi_host': '192.168.1.100', 'lora_wifi_port': 8080, 'lora_cooldown': 30, 'location_update_interval': 25, 'location_timeout': 3.0, 'location_retries': 2, 'location_api_url': 'https://ipinfo.io/json', 'enable_display': True}
+2026-06-06 18:14:07 - __main__ - INFO - Starting detection loop...
+2026-06-06 18:14:07 - __main__ - INFO - Starting detection loop...
+2026-06-06 18:14:15 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:14:15 | Location: 32.7353,74.8617
+2026-06-06 18:14:15 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:14:15 | Location: 32.7353,74.8617
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:14:15
+Location: 32.7353,74.8617
+============================================================
+2026-06-06 18:14:15 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:14:15 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:14:16 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:14:16 | Location: 32.7353,74.8617
+2026-06-06 18:14:16 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:14:16 | Location: 32.7353,74.8617
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:14:16
+Location: 32.7353,74.8617
+============================================================
+2026-06-06 18:14:16 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:14:16 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:14:17 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:14:17 | Location: 32.7353,74.8617
+2026-06-06 18:14:17 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:14:17 | Location: 32.7353,74.8617
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:14:17
+Location: 32.7353,74.8617
+============================================================
+2026-06-06 18:14:17 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:14:17 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:14:20 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:14:20 | Location: 32.7353,74.8617
+2026-06-06 18:14:20 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:14:20 | Location: 32.7353,74.8617
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:14:20
+Location: 32.7353,74.8617
+============================================================
+2026-06-06 18:14:20 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:14:20 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:14:21 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:14:21 | Location: 32.7353,74.8617
+2026-06-06 18:14:21 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:14:21 | Location: 32.7353,74.8617
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:14:21
+Location: 32.7353,74.8617
+============================================================
+2026-06-06 18:14:21 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:14:21 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:14:22 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:14:22 | Location: 32.7353,74.8617
+2026-06-06 18:14:22 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:14:22 | Location: 32.7353,74.8617
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:14:22
+Location: 32.7353,74.8617
+============================================================
+2026-06-06 18:14:22 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:14:22 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:14:23 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:14:23 | Location: 32.7353,74.8617
+2026-06-06 18:14:23 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:14:23 | Location: 32.7353,74.8617
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:14:23
+Location: 32.7353,74.8617
+============================================================
+2026-06-06 18:14:23 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:14:23 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:14:23 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:14:23 | Location: 32.7353,74.8617
+2026-06-06 18:14:23 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:14:23 | Location: 32.7353,74.8617
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:14:23
+Location: 32.7353,74.8617
+============================================================
+2026-06-06 18:14:23 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:14:23 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:14:25 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:14:25 | Location: 32.7353,74.8617
+2026-06-06 18:14:25 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:14:25 | Location: 32.7353,74.8617
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:14:25
+Location: 32.7353,74.8617
+============================================================
+2026-06-06 18:14:25 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:14:25 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:14:26 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:14:26 | Location: 32.7353,74.8617
+2026-06-06 18:14:26 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:14:26 | Location: 32.7353,74.8617
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:14:26
+Location: 32.7353,74.8617
+============================================================
+2026-06-06 18:14:26 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:14:26 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:14:26 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:14:26 | Location: 32.7353,74.8617
+2026-06-06 18:14:26 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:14:26 | Location: 32.7353,74.8617
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:14:26
+Location: 32.7353,74.8617
+============================================================
+2026-06-06 18:14:26 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:14:26 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:14:30 - __main__ - INFO - Shutdown signal received
+2026-06-06 18:14:30 - __main__ - INFO - Shutdown signal received
+2026-06-06 18:14:30 - __main__ - INFO - Shutting down detection system...
+2026-06-06 18:14:30 - __main__ - INFO - Shutting down detection system...
+2026-06-06 18:14:30 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 18:14:30 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 18:14:30 - __main__ - INFO - ✓ System shutdown complete
+2026-06-06 18:14:30 - __main__ - INFO - ✓ System shutdown complete
+2026-06-06 18:14:31 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:14:31 | Location: 32.7353,74.8617
+2026-06-06 18:14:31 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:14:31 | Location: 32.7353,74.8617
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:14:31
+Location: 32.7353,74.8617
+============================================================
+2026-06-06 18:14:31 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:14:31 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:14:31 - __main__ - INFO - Shutting down detection system...
+2026-06-06 18:14:31 - __main__ - INFO - Shutting down detection system...
+2026-06-06 18:14:31 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 18:14:31 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 18:14:31 - __main__ - INFO - ✓ System shutdown complete
+2026-06-06 18:14:31 - __main__ - INFO - ✓ System shutdown complete
+2026-06-06 18:17:53 - __main__ - INFO - Initializing detection system...
+2026-06-06 18:17:53 - detector.model_loader - INFO - Loading yolov5n model on cpu...
+2026-06-06 18:17:56 - detector.model_loader - INFO - ✓ Model loaded successfully on cpu
+2026-06-06 18:17:56 - detector.detect - INFO - Detector initialized: threshold=0.45, skip=1
+2026-06-06 18:17:57 - __main__ - INFO - ✓ Camera initialized (ID: 0, 640x480)
+2026-06-06 18:17:57 - lora.serial_handler - INFO - Communication handler initialized for UART
+2026-06-06 18:17:57 - lora.send_lora - INFO - LoRaMessenger initialized (cooldown: 30s)
+2026-06-06 18:17:57 - utils.gps - INFO - IP geolocation initialized: interval=25s timeout=3.0s retries=2 api=https://ipinfo.io/json
+2026-06-06 18:17:57 - utils.logger - INFO - System started at 2026-06-06 18:17:57
+Config: {'model': 'yolov5n', 'camera_id': 0, 'confidence': 0.45, 'skip_frames': 1, 'camera_size': (640, 480), 'lora_connection': 'uart', 'lora_port': '/dev/ttyUSB0', 'lora_wifi_host': '192.168.1.100', 'lora_wifi_port': 8080, 'lora_cooldown': 30, 'location_update_interval': 25, 'location_timeout': 3.0, 'location_retries': 2, 'location_api_url': 'https://ipinfo.io/json', 'enable_display': True}
+2026-06-06 18:17:57 - utils.logger - INFO - System started at 2026-06-06 18:17:57
+Config: {'model': 'yolov5n', 'camera_id': 0, 'confidence': 0.45, 'skip_frames': 1, 'camera_size': (640, 480), 'lora_connection': 'uart', 'lora_port': '/dev/ttyUSB0', 'lora_wifi_host': '192.168.1.100', 'lora_wifi_port': 8080, 'lora_cooldown': 30, 'location_update_interval': 25, 'location_timeout': 3.0, 'location_retries': 2, 'location_api_url': 'https://ipinfo.io/json', 'enable_display': True}
+2026-06-06 18:17:57 - __main__ - INFO - Starting detection loop...
+2026-06-06 18:17:57 - __main__ - INFO - Starting detection loop...
+2026-06-06 18:18:00 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:18:00 | Location: 32.7353,74.8617
+2026-06-06 18:18:00 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:18:00 | Location: 32.7353,74.8617
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:18:00
+Location: 32.7353,74.8617
+============================================================
+2026-06-06 18:18:00 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:18:00 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:18:01 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:18:01 | Location: 32.7353,74.8617
+2026-06-06 18:18:01 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:18:01 | Location: 32.7353,74.8617
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:18:01
+Location: 32.7353,74.8617
+============================================================
+2026-06-06 18:18:01 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:18:01 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:18:08 - __main__ - INFO - Shutdown signal received
+2026-06-06 18:18:08 - __main__ - INFO - Shutdown signal received
+2026-06-06 18:18:08 - __main__ - INFO - Shutting down detection system...
+2026-06-06 18:18:08 - __main__ - INFO - Shutting down detection system...
+2026-06-06 18:18:08 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 18:18:08 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 18:18:08 - __main__ - INFO - ✓ System shutdown complete
+2026-06-06 18:18:08 - __main__ - INFO - ✓ System shutdown complete
+2026-06-06 18:18:09 - __main__ - INFO - Shutting down detection system...
+2026-06-06 18:18:09 - __main__ - INFO - Shutting down detection system...
+2026-06-06 18:18:09 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 18:18:09 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 18:18:09 - __main__ - INFO - ✓ System shutdown complete
+2026-06-06 18:18:09 - __main__ - INFO - ✓ System shutdown complete
+2026-06-06 18:33:28 - __main__ - INFO - Initializing detection system...
+2026-06-06 18:33:28 - detector.model_loader - INFO - Loading yolov5n model on cpu...
+2026-06-06 18:33:32 - detector.model_loader - INFO - ✓ Model loaded successfully on cpu
+2026-06-06 18:33:32 - detector.detect - INFO - Detector initialized: threshold=0.45, skip=1
+2026-06-06 18:33:33 - __main__ - INFO - ✓ Camera initialized (ID: 0, 640x480)
+2026-06-06 18:33:33 - lora.serial_handler - INFO - Communication handler initialized for UART
+2026-06-06 18:33:33 - lora.send_lora - INFO - LoRaMessenger initialized (cooldown: 30s)
+2026-06-06 18:33:33 - utils.gps - INFO - IP geolocation initialized: interval=25s timeout=3.0s retries=2 api=https://ipinfo.io/json
+2026-06-06 18:33:33 - utils.logger - INFO - System started at 2026-06-06 18:33:33
+Config: {'model': 'yolov5n', 'camera_id': 0, 'confidence': 0.45, 'skip_frames': 1, 'camera_size': (640, 480), 'lora_connection': 'uart', 'lora_port': '/dev/ttyUSB0', 'lora_wifi_host': '192.168.1.100', 'lora_wifi_port': 8080, 'lora_cooldown': 30, 'location_update_interval': 25, 'location_timeout': 3.0, 'location_retries': 2, 'location_api_url': 'https://ipinfo.io/json', 'enable_display': True}
+2026-06-06 18:33:33 - utils.logger - INFO - System started at 2026-06-06 18:33:33
+Config: {'model': 'yolov5n', 'camera_id': 0, 'confidence': 0.45, 'skip_frames': 1, 'camera_size': (640, 480), 'lora_connection': 'uart', 'lora_port': '/dev/ttyUSB0', 'lora_wifi_host': '192.168.1.100', 'lora_wifi_port': 8080, 'lora_cooldown': 30, 'location_update_interval': 25, 'location_timeout': 3.0, 'location_retries': 2, 'location_api_url': 'https://ipinfo.io/json', 'enable_display': True}
+2026-06-06 18:33:33 - __main__ - INFO - Starting detection loop...
+2026-06-06 18:33:33 - __main__ - INFO - Starting detection loop...
+2026-06-06 18:33:42 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:33:42 | Location: 32.7353,74.8617
+2026-06-06 18:33:42 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:33:42 | Location: 32.7353,74.8617
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:33:42
+Location: 32.7353,74.8617
+============================================================
+2026-06-06 18:33:42 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:33:42 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:33:43 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:33:43 | Location: 32.7353,74.8617
+2026-06-06 18:33:43 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:33:43 | Location: 32.7353,74.8617
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:33:43
+Location: 32.7353,74.8617
+============================================================
+2026-06-06 18:33:43 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:33:43 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:33:45 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:33:45 | Location: 32.7353,74.8617
+2026-06-06 18:33:45 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:33:45 | Location: 32.7353,74.8617
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:33:45
+Location: 32.7353,74.8617
+============================================================
+2026-06-06 18:33:45 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:33:45 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:33:46 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:33:46 | Location: 32.7353,74.8617
+2026-06-06 18:33:46 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:33:46 | Location: 32.7353,74.8617
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:33:46
+Location: 32.7353,74.8617
+============================================================
+2026-06-06 18:33:46 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:33:46 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:33:47 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:33:47 | Location: 32.7353,74.8617
+2026-06-06 18:33:47 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:33:47 | Location: 32.7353,74.8617
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:33:47
+Location: 32.7353,74.8617
+============================================================
+2026-06-06 18:33:47 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:33:47 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:33:48 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:33:48 | Location: 32.7353,74.8617
+2026-06-06 18:33:48 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:33:48 | Location: 32.7353,74.8617
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:33:48
+Location: 32.7353,74.8617
+============================================================
+2026-06-06 18:33:48 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:33:48 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:33:49 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:33:49 | Location: 32.7353,74.8617
+2026-06-06 18:33:49 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:33:49 | Location: 32.7353,74.8617
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:33:49
+Location: 32.7353,74.8617
+============================================================
+2026-06-06 18:33:49 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:33:49 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:33:51 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:33:51 | Location: 32.7353,74.8617
+2026-06-06 18:33:51 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:33:51 | Location: 32.7353,74.8617
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:33:51
+Location: 32.7353,74.8617
+============================================================
+2026-06-06 18:33:51 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:33:51 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:33:52 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:33:52 | Location: 32.7353,74.8617
+2026-06-06 18:33:52 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:33:52 | Location: 32.7353,74.8617
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:33:52
+Location: 32.7353,74.8617
+============================================================
+2026-06-06 18:33:52 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:33:52 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:33:53 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:33:53 | Location: 32.7353,74.8617
+2026-06-06 18:33:53 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:33:53 | Location: 32.7353,74.8617
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:33:53
+Location: 32.7353,74.8617
+============================================================
+2026-06-06 18:33:53 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:33:53 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:33:54 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:33:54 | Location: 32.7353,74.8617
+2026-06-06 18:33:54 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:33:54 | Location: 32.7353,74.8617
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:33:54
+Location: 32.7353,74.8617
+============================================================
+2026-06-06 18:33:54 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:33:54 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:33:56 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:33:56 | Location: 32.7353,74.8617
+2026-06-06 18:33:56 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:33:56 | Location: 32.7353,74.8617
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:33:56
+Location: 32.7353,74.8617
+============================================================
+2026-06-06 18:33:56 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:33:56 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:33:58 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:33:58 | Location: 32.7353,74.8617
+2026-06-06 18:33:58 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:33:58 | Location: 32.7353,74.8617
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:33:58
+Location: 32.7353,74.8617
+============================================================
+2026-06-06 18:33:58 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:33:58 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:33:58 - __main__ - INFO - Shutdown signal received
+2026-06-06 18:33:58 - __main__ - INFO - Shutdown signal received
+2026-06-06 18:33:58 - __main__ - INFO - Shutting down detection system...
+2026-06-06 18:33:58 - __main__ - INFO - Shutting down detection system...
+2026-06-06 18:33:58 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 18:33:58 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 18:33:58 - __main__ - INFO - ✓ System shutdown complete
+2026-06-06 18:33:58 - __main__ - INFO - ✓ System shutdown complete
+2026-06-06 18:33:59 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:33:59 | Location: 32.7353,74.8617
+2026-06-06 18:33:59 - utils.logger - INFO - DETECTION: Entity: Person without weapon | Date and Time: 2026-06-06 18:33:59 | Location: 32.7353,74.8617
+Entity: Person without weapon
+Date and Time: 2026-06-06 18:33:59
+Location: 32.7353,74.8617
+============================================================
+2026-06-06 18:33:59 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:33:59 - lora.serial_handler - ERROR - Connection not established
+2026-06-06 18:33:59 - __main__ - INFO - Shutting down detection system...
+2026-06-06 18:33:59 - __main__ - INFO - Shutting down detection system...
+2026-06-06 18:33:59 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 18:33:59 - utils.logger - INFO - System shutdown: Normal shutdown
+2026-06-06 18:33:59 - __main__ - INFO - ✓ System shutdown complete
+2026-06-06 18:33:59 - __main__ - INFO - ✓ System shutdown complete
