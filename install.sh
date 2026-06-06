@@ -288,7 +288,7 @@ StartLimitIntervalSec=0
 Type=simple
 User=$USER
 WorkingDirectory=$PROJECT_DIR
-ExecStart=$VENV_DIR/bin/python3 $PROJECT_DIR/main.py --gps-simulation
+ExecStart=$VENV_DIR/bin/python3 $PROJECT_DIR/main.py
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal
@@ -336,7 +336,7 @@ cd "$PROJECT_DIR"
 
 # Run with provided arguments, or use defaults
 if [[ $# -eq 0 ]]; then
-    python3 main.py --gps-simulation
+    python3 main.py
 else
     python3 main.py "$@"
 fi
@@ -387,7 +387,7 @@ print_summary() {
     echo "  cd $PROJECT_DIR"
     echo "  source venv/bin/activate"
     echo "  python3 main.py --help"
-    echo "  python3 main.py --gps-simulation"
+    echo "  python3 main.py"
     echo ""
     
     echo -e "${BLUE}Or use startup script:${NC}"

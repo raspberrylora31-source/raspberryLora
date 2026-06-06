@@ -8,8 +8,6 @@ import logging
 import argparse
 import signal
 import sys
-from pathlib import Path
-from typing import Optional
 
 # Import custom modules
 from detector import YOLOModelLoader, ObjectDetector
@@ -31,13 +29,15 @@ class DetectionSystem:
         skip_frames: int = 2,
         camera_width: int = 640,
         camera_height: int = 480,
-        use_gps: bool = True,
-        gps_simulation: bool = True,
         lora_port: str = "/dev/ttyUSB0",
         lora_connection: str = "uart",
         lora_wifi_host: str = "192.168.1.100",
         lora_wifi_port: int = 8080,
         lora_cooldown: int = 30,
+        location_update_interval: int = 25,
+        location_timeout: float = 3.0,
+        location_retries: int = 2,
+        location_api_url: str = GPSHandler.DEFAULT_API_URL,
         enable_display: bool = False,
     ):
         """
@@ -50,13 +50,15 @@ class DetectionSystem:
             skip_frames: Frame skip for performance
             camera_width: Camera frame width
             camera_height: Camera frame height
-            use_gps: Enable GPS
-            gps_simulation: Use simulated GPS
             lora_port: Serial port for UART/USB
             lora_connection: Connection type ("uart", "usb", "wifi", "http", "ble", "btc")
             lora_wifi_host: IP for WiFi connection
             lora_wifi_port: Port for WiFi connection
             lora_cooldown: LoRa message cooldown in seconds
+            location_update_interval: Seconds between IP geolocation refreshes
+            location_timeout: HTTP timeout for IP geolocation requests
+            location_retries: Retry attempts for IP geolocation requests
+            location_api_url: IP geolocation API endpoint
             enable_display: Show camera feed with detections
         """
         self.logger = logging.getLogger(__name__)
@@ -69,12 +71,15 @@ class DetectionSystem:
             "confidence": confidence_threshold,
             "skip_frames": skip_frames,
             "camera_size": (camera_width, camera_height),
-            "use_gps": use_gps,
             "lora_connection": lora_connection,
             "lora_port": lora_port,
             "lora_wifi_host": lora_wifi_host,
             "lora_wifi_port": lora_wifi_port,
             "lora_cooldown": lora_cooldown,
+            "location_update_interval": location_update_interval,
+            "location_timeout": location_timeout,
+            "location_retries": location_retries,
+            "location_api_url": location_api_url,
             "enable_display": enable_display,
         }
 
@@ -108,8 +113,13 @@ class DetectionSystem:
             cooldown_seconds=lora_cooldown,
         )
 
-        # 4. Initialize GPS
-        self.gps_handler = GPSHandler(use_simulation=gps_simulation)
+        # 4. Initialize approximate IP geolocation
+        self.gps_handler = GPSHandler(
+            update_interval_seconds=location_update_interval,
+            timeout_seconds=location_timeout,
+            max_retries=location_retries,
+            api_url=location_api_url,
+        )
 
         # 5. Initialize logger
         self.local_logger = LocalLogger(log_dir="logs", enable_file_logging=True)
@@ -181,11 +191,11 @@ class DetectionSystem:
                 # Run detection
                 entity_type, details = self.detector.detect_combined(frame)
 
-                # Get GPS location
-                latitude, longitude = self.gps_handler.get_location()
-
                 # Only process certain detections
                 if entity_type in ["Person with weapon", "Person without weapon"]:
+                    # Refresh approximate IP location only when a detection is handled.
+                    latitude, longitude = self.gps_handler.get_current_location()
+
                     # Log detection
                     self.local_logger.log_detection(
                         entity_type, latitude, longitude
@@ -331,18 +341,29 @@ def main():
         help="LoRa message cooldown in seconds (default: 30)",
     )
 
-    # GPS settings
+    # Location settings
     parser.add_argument(
-        "--gps-simulation",
-        action="store_true",
-        default=True,
-        help="Use simulated GPS location",
+        "--location-update-interval",
+        type=int,
+        default=25,
+        help="Seconds between IP geolocation updates (default: 25)",
     )
     parser.add_argument(
-        "--no-gps-simulation",
-        dest="gps_simulation",
-        action="store_false",
-        help="Disable GPS simulation (use real GPS module)",
+        "--location-timeout",
+        type=float,
+        default=3.0,
+        help="IP geolocation HTTP timeout in seconds (default: 3.0)",
+    )
+    parser.add_argument(
+        "--location-retries",
+        type=int,
+        default=2,
+        help="IP geolocation retry attempts (default: 2)",
+    )
+    parser.add_argument(
+        "--location-api-url",
+        default=GPSHandler.DEFAULT_API_URL,
+        help="IP geolocation API URL (default: https://ipinfo.io/json)",
     )
 
     # Display
@@ -367,13 +388,15 @@ def main():
             skip_frames=args.skip_frames,
             camera_width=args.width,
             camera_height=args.height,
-            use_gps=True,
-            gps_simulation=args.gps_simulation,
             lora_port=args.lora_port,
             lora_connection=args.lora_connection,
             lora_wifi_host=args.lora_wifi_host,
             lora_wifi_port=args.lora_wifi_port,
             lora_cooldown=args.lora_cooldown,
+            location_update_interval=args.location_update_interval,
+            location_timeout=args.location_timeout,
+            location_retries=args.location_retries,
+            location_api_url=args.location_api_url,
             enable_display=args.display,
         )
 
