@@ -1,664 +1,390 @@
-# Real-Time Object Detection System for Raspberry Pi 4B
+# Raspberry Pi Person Detection over Meshtastic
 
-A lightweight, optimized real-time person and weapon detection system for Raspberry Pi 4B with LoRa wireless communication.
+USB webcam detection on a Raspberry Pi. Persons are boxed locally. Confirmed
+events are sent as a short UART text line to a LILYGO T-Beam running Meshtastic.
+The T-Beam Serial Module (TEXTMSG) places that line on the LoRa mesh.
 
-## 📋 Project Overview
+This Pi application does **not** implement LoRa itself.
 
-This system captures video from a USB camera, performs lightweight object detection (person/weapon), determines the entity type, logs the event, and broadcasts the detection via LoRa to neighboring nodes.
+## Project purpose
 
-**Key Features:**
-- ✅ Lightweight YOLO models optimized for Raspberry Pi CPU
-- ✅ Real-time person detection
-- ✅ LoRa wireless communication with cooldown throttling
-- ✅ GPS location integration (simulation or real module)
-- ✅ Local event logging with date/time/location
-- ✅ Modular, clean code architecture
-- ✅ Graceful shutdown handling
-- ✅ Low RAM/CPU footprint
+- Capture frames from a USB webcam
+- Detect persons with a lightweight local model
+- Draw bounding boxes on an optional local display
+- Classify a confirmed person as `PERSON WPN` or `PERSON NO_WPN`
+- Timestamp the event from the Pi system clock
+- Send one compact ASCII line through GPIO UART to Meshtastic
 
----
-
-## 🛠️ Hardware Requirements
-
-### Raspberry Pi Setup
-- **Raspberry Pi 4B** (4GB RAM minimum)
-- **MicroSD Card** (16GB+ recommended)
-- **5V 3A USB-C Power Supply**
-- **Heat sink + Fan** (optional but recommended)
-
-### Camera
-- **Logitech USB Camera** (or any USB webcam compatible with OpenCV)
-
-### LoRa Module
-- **LILYGO LoRa32** (ESP32 + SX1276)
-- Alternative: Any ESP32 with SX1276 LoRa module
-
-### Optional GPS
-- **USB GPS Module** (e.g., u-blox NEO-6M)
-- Serial output (NMEA protocol)
-
----
-
-## 🔌 Wiring Diagram
-
-### Raspberry Pi to LILYGO LoRa32 (UART Connection)
+Example mesh text:
 
 ```
-Raspberry Pi 4B            LILYGO LoRa32 (ESP32)
-─────────────────          ──────────────────────
-Pin 8 (GPIO 14)  TX  ────→ RX (GPIO 16)
-Pin 10 (GPIO 15) RX  ←──── TX (GPIO 17)
-Pin 6 (GND)      GND ────→ GND
-Pin 4 (5V)       5V  ────→ 5V (or use 3.3V regulator)
+PERSON NO_WPN 2026-08-20 11:25:31
+PERSON WPN 2026-08-20 11:25:38
 ```
 
-**Important:** ESP32 is 3.3V tolerant. Use a voltage divider on RPi TX pin if needed:
-- RPi TX → 1kΩ resistor → 2kΩ resistor to GND → ESP32 RX
-- Divider ratio: 3.3V/5V ≈ 0.66
+Images, video, coordinates, and JSON are never sent over LoRa.
 
-### Raspberry Pi GPIO Layout
+**Weapon detection is not enabled by default.** The stock person model is
+YOLOv8n (COCO). COCO has a `person` class and does not provide a reliable
+weapon class. `PERSON WPN` is emitted only when a separate weapon-class model
+file is supplied via `WEAPON_MODEL`. Until then, confirmed persons are
+`PERSON NO_WPN`.
+
+## System architecture
 
 ```
-    +3V3 ─────[01][02]─ +5V
-  GPIO2 ─────[03][04]─ +5V
-  GPIO3 ─────[05][06]─ GND
-  GPIO4 ─────[07][08]─ GPIO14 (UART TX) → to ESP32 RX
-   GND  ─────[09][10]─ GPIO15 (UART RX) ← from ESP32 TX
+USB webcam
+    -> camera.py          capture 640x360 (configurable), 1-frame buffer
+    -> detector.py        person model once; optional weapon model on person crops
+    -> event_manager.py   confirm N frames, cooldown, state-change
+    -> message_formatter.py   PERSON <WPN|NO_WPN> <timestamp>
+    -> uart_meshtastic.py     background UART writer
+    -> Raspberry Pi GPIO UART (/dev/serial0, 38400)
+    -> T-Beam Serial Module TEXTMSG
+    -> Meshtastic LoRa mesh
 ```
 
-### Camera Connection
-- **USB Camera**: Simply connect to any USB 3.0 port on Raspberry Pi
+`app.py` is the only process you run for the full pipeline.
 
-### Optional GPS Module
+## Hardware
+
+- Raspberry Pi (this project targets **Raspberry Pi 4B**; 4GB RAM recommended)
+- USB webcam
+- LILYGO T-Beam with Meshtastic firmware
+- Three jumper wires: TX, RX, GND
+- Independent power for the T-Beam (do **not** power it from Pi 5V on the UART)
+
+## Exact UART wiring
+
+TX and RX are crossed. Use a common GND. Do not connect Pi 5V to the T-Beam UART.
+
 ```
-RPi Serial Port 0          GPS Module (USB)
-─────────────────          ──────────────────
-/dev/ttyUSB1       ────→   USB Serial Adapter
-                   (NMEA @ 9600 baud)
+Raspberry Pi                         LILYGO T-Beam
+
+GPIO14 / TXD
+Physical pin 8  ------------------>  GPIO13 / RX
+
+GPIO15 / RXD
+Physical pin 10 <------------------  GPIO14 / TX
+
+GND
+Physical pin 6  -------------------  GND
 ```
 
----
+| Raspberry Pi | Function | T-Beam |
+|---|---|---|
+| Physical pin 8 / GPIO14 | TXD | GPIO13 RX |
+| Physical pin 10 / GPIO15 | RXD | GPIO14 TX |
+| Physical pin 6 | GND | GND |
 
-## 📦 Installation Steps
+GPIO13/GPIO14 are the recommended T-Beam UART pins for this Meshtastic serial
+connection.
 
-### 1. Raspberry Pi OS Setup
+The visible T-Beam GPIO1/GPIO3 TX/RX pins are UART0. They are shared with USB
+serial/programming, so they are **not** the preferred pins for this integration.
+
+Pi GPIO UART is 3.3 V. The T-Beam UART is 3.3 V. Direct TX/RX/GND is correct.
+
+## Meshtastic configuration
+
+Flash Meshtastic onto the T-Beam, then enable the Serial Module:
+
+| Setting | Value |
+|---|---|
+| Enabled | YES |
+| Mode | TEXTMSG |
+| TX GPIO | 14 |
+| RX GPIO | 13 |
+| Baud | 38400 |
+
+CLI example (use the T-Beam USB port while configuring, not the Pi UART):
 
 ```bash
-# Update system
-sudo apt-get update
-sudo apt-get upgrade -y
+meshtastic --set serial.enabled true
+meshtastic --set serial.mode TEXTMSG
+meshtastic --set serial.txd 14
+meshtastic --set serial.rxd 13
+meshtastic --set serial.baud 38400
+```
 
-# Install required system packages
-sudo apt-get install -y \
-    python3-pip \
-    python3-dev \
-    libatlas-base-dev \
-    libjasper-dev \
-    libtiff5 \
-    libjasper1 \
-    libharfbuzz0b \
-    libwebp6 \
-    libopenjp2-7 \
-    libtiff5 \
-    libjasper1 \
-    libharfbuzz0b \
-    libwebp6 \
-    git \
-    curl \
-    wget
+Put the T-Beam and every receiving node on the same channel and key. After
+configuration, disconnect the USB serial session if it would fight the GPIO
+UART, power the T-Beam on its own supply, and wire TX/RX/GND as above.
 
-# Enable UART for ESP32 communication
-# Edit /boot/firmware/config.txt or /boot/config.txt
-sudo nano /boot/firmware/config.txt
+The Pi never talks a custom LoRa protocol. It only writes a newline-terminated
+text line. Meshtastic TEXTMSG turns that line into a normal mesh text message.
 
-# Add these lines at the end:
-# enable_uart=1
-# dtoverlay=disable-bt  # Disable Bluetooth to free up UART (optional)
+## Raspberry Pi UART configuration
 
-# Save and reboot
+Preferred device: `/dev/serial0` (override with `UART_PORT`).
+
+1. Disable the serial login console and enable the serial hardware:
+
+```bash
+sudo raspi-config
+# Interface Options -> Serial Port
+#   login shell over serial: No
+#   serial port hardware enabled: Yes
+```
+
+2. On Raspberry Pi 4, free the PL011 UART from Bluetooth if `/dev/serial0`
+   is not on the GPIO header. In `/boot/firmware/config.txt` (Bookworm) or
+   `/boot/config.txt`:
+
+```
+enable_uart=1
+dtoverlay=disable-bt
+```
+
+3. Reboot, then confirm the device and permissions:
+
+```bash
 sudo reboot
+ls -l /dev/serial0
+sudo usermod -aG dialout "$USER"
 ```
 
-### 2. Clone and Setup Project
+Default baud is **38400** (`UART_BAUD`).
+
+## Installation
 
 ```bash
-# Navigate to project directory
-cd /home/lora/raspberryLora
+sudo apt-get update
+sudo apt-get install -y python3-venv python3-dev build-essential \
+    libgl1 libglib2.0-0 libopenjp2-7 libtiff6 libatlas-base-dev
 
-# Create Python virtual environment
+cd /path/to/raspberryLora
 python3 -m venv venv
 source venv/bin/activate
-
-# Upgrade pip
-pip install --upgrade pip setuptools wheel
-
-# Install dependencies
+pip install --upgrade pip
 pip install -r requirements.txt
-```
-
-### 3. Download Pre-trained Models
-
-```bash
-# Create models directory
 mkdir -p models
-
-# Download YOLOv5n (will be cached automatically)
-# Or pre-download YOLOv8n if preferred
-python3 -c "
-import torch
-model = torch.hub.load('ultralytics/yolov5', 'yolov5n', pretrained=True, force_reload=False)
-print('✓ YOLOv5n downloaded and cached')
-"
 ```
 
-### 4. Test Camera Connection
+Place `models/yolov8n.pt` on the Pi if you can (about 6 MB). If the file is
+missing and `DETECTION_BACKEND=yolo`, Ultralytics may download `yolov8n.pt`
+once. Do not point this project at large YOLO weights (`yolov8s/m/l/x`,
+YOLOv5m+, etc.).
+
+If the Pi restarts under YOLO (RAM), skip the neural-net extra packages and
+use HOG:
 
 ```bash
-# Test camera
-python3 << 'EOF'
-import cv2
-
-cap = cv2.VideoCapture(0)
-if cap.isOpened():
-    print("✓ Camera found at /dev/video0")
-    ret, frame = cap.read()
-    if ret:
-        print(f"✓ Frame captured: {frame.shape}")
-    cap.release()
-else:
-    print("✗ Camera not found. List available cameras:")
-    import os
-    for i in range(10):
-        cap = cv2.VideoCapture(i)
-        if cap.isOpened():
-            print(f"  Camera found at /dev/video{i}")
-            cap.release()
-EOF
+pip install opencv-python numpy pyserial
+python3 app.py --backend hog --display
 ```
 
-### 5. Configure UART for ESP32
+## Running the program
 
 ```bash
-# Verify UART is enabled
-ls -la /dev/ttyAMA* /dev/ttyUSB*
-
-# Set permissions if needed
-sudo chmod 666 /dev/ttyAMA0
-sudo chmod 666 /dev/ttyUSB0
-
-# Test serial communication
-python3 -c "
-from lora.serial_handler import SerialHandler
-ports = SerialHandler.find_serial_ports()
-print('Available serial ports:', ports)
-"
-```
-
-### 6. Configure GPS (Optional)
-
-```bash
-# If using USB GPS module
-# Permissions
-sudo chmod 666 /dev/ttyUSB1
-
-# Test GPS module
-python3 << 'EOF'
-import serial
-try:
-    gps = serial.Serial('/dev/ttyUSB1', 9600, timeout=2)
-    print("✓ GPS module connected")
-    for _ in range(5):
-        line = gps.readline()
-        print(line.decode())
-    gps.close()
-except Exception as e:
-    print(f"✗ GPS error: {e}")
-EOF
-```
-
----
-
-## 🔧 ESP32 Setup (LILYGO LoRa32)
-
-### 1. Install Arduino IDE
-
-```bash
-# Download and install Arduino IDE
-# https://www.arduino.cc/en/software
-```
-
-### 2. Configure Board
-
-In Arduino IDE:
-- **Tools > Board > esp32 > LILYGO T3 LoRa32**
-- **Port**: Select appropriate COM/tty port
-- **Upload Speed**: 115200
-
-### 3. Install Libraries
-
-In Arduino IDE Libraries Manager:
-- Search and install: **LoRa** by Sandeep Mistry
-- Search and install: **SPIFFS**
-
-### 4. Upload Code
-
-```bash
-# Copy esp32_lora_receiver.ino to Arduino IDE
-# Verify and Upload (Ctrl+U)
-```
-
-### 5. Monitor Serial Output
-
-```bash
-# Open Serial Monitor (Tools > Serial Monitor)
-# Baud rate: 115200
-# Watch for: "✓ LoRa initialized"
-```
-
----
-
-## ▶️ Running the System
-
-### Basic Usage
-
-```bash
-# Activate virtual environment
 source venv/bin/activate
 
-# Run with defaults
-python3 main.py
+# Full pipeline (GPIO UART -> T-Beam)
+python3 app.py --display
 
-# With custom camera and parameters
-python3 main.py \
-    --model yolov5n \
-    --camera 0 \
-    --width 640 \
-    --height 480 \
-    --confidence 0.45 \
-    --skip-frames 2 \
-    --lora-port /dev/ttyUSB0 \
-    --lora-cooldown 30 \
-    --gps-simulation \
-    --display
+# Detection only (no UART)
+python3 app.py --no-uart --display --person-only
 
-# With real GPS (no simulation)
-python3 main.py --no-gps-simulation
-
-# Show video display with detections
-python3 main.py --display
+# HOG backend (lightest, no PyTorch)
+python3 app.py --backend hog --display
 ```
 
-### Command-Line Arguments
-
-```
---model {yolov5n,yolov8n}
-    Detection model (default: yolov5n)
-
---camera CAMERA_ID
-    Camera device ID (default: 0)
-
---width WIDTH
-    Camera frame width (default: 640)
-
---height HEIGHT
-    Camera frame height (default: 480)
-
---confidence THRESHOLD
-    Detection confidence 0-1 (default: 0.45)
-
---skip-frames N
-    Skip N frames for performance (default: 2)
-
---lora-port PORT
-    Serial port for LoRa module (default: /dev/ttyUSB0)
-
---lora-cooldown SECONDS
-    LoRa message cooldown (default: 30)
-
---gps-simulation
-    Use simulated GPS (default: enabled)
-
---no-gps-simulation
-    Use real GPS module
-
---display
-    Show camera feed with detections
-```
-
-### Output Format
-
-```
-Entity: Person with weapon
-Date and Time: 2026-06-05 14:23:45
-Location: 37.7749,-122.4194
-
-Entity: Person without weapon
-Date and Time: 2026-06-05 14:23:50
-Location: 37.7749,-122.4194
-```
-
----
-
-## 📊 Log Files
-
-### Detection Logs
-```
-logs/detections.log
-```
-
-### Error Logs
-```
-logs/errors.log
-```
-
-### ESP32 LoRa Logs
-```
-ESP32 SPIFFS: /lora_log.txt
-```
-
----
-
-## 🚀 Performance Optimization
-
-### Memory Usage Tips
-
-1. **Reduce Frame Resolution**
-   ```bash
-   python3 main.py --width 320 --height 240  # Extreme optimization
-   ```
-
-2. **Increase Frame Skip**
-   ```bash
-   python3 main.py --skip-frames 3  # Process every 3rd frame
-   ```
-
-3. **Use YOLOv8n** (lighter than v5)
-   ```bash
-   python3 main.py --model yolov8n
-   ```
-
-4. **Disable Display**
-   - Don't use `--display` flag (saves memory)
-
-### CPU Usage Tips
-
-1. **Lower Confidence Threshold** (trades accuracy for speed)
-   ```bash
-   python3 main.py --confidence 0.5
-   ```
-
-2. **Reduce Camera FPS** (in code: line 234)
-   ```python
-   self.camera.set(cv2.CAP_PROP_FPS, 10)  # Lower FPS
-   ```
-
-3. **Enable Frame Buffering** (default: 1)
-
-### Memory Profiling
+Useful environment variables:
 
 ```bash
-# Monitor system resources
-watch -n 1 'free -h && ps aux | grep python3'
-
-# Or use htop
-sudo apt-get install htop
-htop  # Press 'k' to kill processes
+export UART_PORT=/dev/serial0
+export UART_BAUD=38400
+export FRAME_WIDTH=640
+export FRAME_HEIGHT=360
+export INFER_SIZE=320
+export TARGET_INFERENCE_FPS=7
+export PERSON_CONFIDENCE_THRESHOLD=0.45
+export WEAPON_CONFIDENCE_THRESHOLD=0.40
+export CONFIRMATION_FRAMES=3
+export EVENT_COOLDOWN_SECONDS=30
 ```
 
----
+## Detection configuration
 
-## 🔍 Troubleshooting
+| Variable / flag | Default | Meaning |
+|---|---|---|
+| `DETECTION_BACKEND` / `--backend` | `yolo` | `yolo` (YOLOv8n) or `hog` |
+| `PERSON_MODEL` / `--person-model` | `models/yolov8n.pt` | Person weights |
+| `WEAPON_MODEL` / `--weapon-model` | empty | Optional weapon-class model |
+| `PERSON_CONFIDENCE_THRESHOLD` | `0.45` | Person score |
+| `WEAPON_CONFIDENCE_THRESHOLD` | `0.40` | Weapon score |
+| `INFER_SIZE` | `320` | YOLO input size |
+| `FRAME_WIDTH` x `FRAME_HEIGHT` | `640x360` | Capture size |
+| `TARGET_INFERENCE_FPS` | `7` | Cap inference rate (5–10 target) |
+| `CONFIRMATION_FRAMES` | `3` | Consistent frames before an event |
+| `EVENT_COOLDOWN_SECONDS` | `30` | Repeat of the same state |
+| `STATE_CHANGE_ONLY` | `false` | If true, never resend the same state |
+| `--person-only` | off | Do not load a weapon model |
+| `--display` | off | Local OpenCV preview with boxes |
+| `--no-uart` | off | Run vision without the radio |
 
-### Camera Not Found
+Person detection and weapon classification are separate. Flow:
+
+1. Detect persons on the frame
+2. If a weapon model is enabled, run it on each expanded person crop
+3. A weapon counts only when it overlaps that person region
+4. No person in the frame → no `PERSON WPN` event
+5. A weapon outside every person region is drawn as `WPN` locally but does
+   not generate a mesh event
+
+## Message format
+
+Built only by `format_detection_message()` in `message_formatter.py`:
+
+```
+PERSON NO_WPN YYYY-MM-DD HH:MM:SS
+PERSON WPN YYYY-MM-DD HH:MM:SS
+```
+
+Timestamp is the Pi local clock, without milliseconds.
+
+## Receiver setup
+
+Receivers do **not** run this Raspberry Pi application.
+
+Any Meshtastic node (phone app, another T-Beam, a T-Echo, etc.) on the same
+channel already shows the text as a normal chat message.
+
+Optional: if a computer is attached to a receiving node that also has Serial
+TEXTMSG enabled, print incoming lines:
 
 ```bash
-# List all video devices
-ls -la /dev/video*
-
-# Test specific device
-python3 -c "import cv2; cap = cv2.VideoCapture(0); print(cap.isOpened())"
-
-# If not working, try USB camera:
-python3 -c "import cv2; cap = cv2.VideoCapture('/dev/video0'); print(cap.isOpened())"
+python3 tools/receive_meshtastic.py --port /dev/ttyUSB0 --baud 38400
 ```
 
-### LoRa Connection Failed
+Output:
+
+```
+RECEIVED:
+PERSON NO_WPN 2026-08-20 11:25:31
+```
+
+## Bring-up sequence
+
+Do not debug camera inference and UART at the same time.
+
+**STEP 1 — UART only**
 
 ```bash
-# Check serial port
-ls -la /dev/ttyUSB*
-ls -la /dev/ttyAMA*
-
-# Test connection
-python3 << 'EOF'
-from lora.serial_handler import SerialHandler
-handler = SerialHandler(port="/dev/ttyUSB0")
-if handler.connect():
-    print("✓ Connected to ESP32")
-    handler.disconnect()
-else:
-    print("✗ Connection failed")
-EOF
+python3 tools/test_uart.py "hello"
 ```
 
-### Out of Memory
+**STEP 2 — Mesh text**
 
 ```bash
-# Increase swap (temporary solution)
-sudo dphys-swapfile swapoff
-sudo nano /etc/dphys-swapfile
-# Change CONF_SWAPSIZE=100 to CONF_SWAPSIZE=512
-sudo dphys-swapfile setup
-sudo dphys-swapfile swapon
-
-# Restart system
-sudo reboot
+python3 tools/test_uart.py "TEST MESHTASTIC UART"
 ```
 
-### Model Download Issues
+Confirm `TEST MESHTASTIC UART` on another Meshtastic node.
+
+**STEP 3 — Message formatter**
 
 ```bash
-# Clear PyTorch cache
-rm -rf ~/.cache/torch/hub/
-
-# Re-download model
-python3 -c "
-import torch
-model = torch.hub.load('ultralytics/yolov5', 'yolov5n', force_reload=True)
-"
+python3 -m unittest tests.test_message_formatter -v
 ```
 
----
-
-## 📈 Upgrade Recommendations
-
-### For Better Accuracy
-1. **Custom Weapon Detection Model**
-   - Train YOLOv5/v8 on weapon dataset
-   - Use `datasets/coco-with-weapons` for training
-   - Estimated training: 10-20 hours on RPi with GPU
-
-2. **Multi-Model Ensemble**
-   - Combine YOLOv5n + MobileNet SSD
-   - Improves accuracy at cost of inference time
-
-### For Better Performance
-1. **Hardware Upgrades**
-   - Add USB SSD for faster I/O
-   - Add active cooling (fan + heatsink)
-   - Use Raspberry Pi 5 (when available)
-
-2. **Quantization**
-   - Convert models to INT8
-   - 3-4x speed improvement, 1-2% accuracy loss
-   - Use `torch.quantization` module
-
-3. **GPU Acceleration**
-   - Use Coral TPU (50x faster inference)
-   - Add Jetson Nano with CUDA support
-
-### For Better Reliability
-1. **Cloud Integration**
-   - Send events to Firebase/AWS IoT
-   - Backup detection data remotely
-
-2. **Web Dashboard**
-   - Real-time monitoring via web browser
-   - Historical data visualization
-
-3. **Multi-Node Network**
-   - Deploy multiple RPi units
-   - Aggregate LoRa data to central hub
-
----
-
-## 🧪 Testing
-
-### Unit Tests
+**STEP 4 — Person detection only**
 
 ```bash
-# Test detector module
-python3 -m pytest tests/test_detector.py -v
-
-# Test LoRa communication
-python3 -m pytest tests/test_lora.py -v
+python3 app.py --no-uart --person-only --display
 ```
 
-### Integration Test
+**STEP 5 — Weapon classification**
+
+Only after a real weapon-class model file exists:
 
 ```bash
-python3 << 'EOF'
-# Quick integration test
-from detector import YOLOModelLoader, ObjectDetector
-from lora import SerialHandler, LoRaMessenger
-from utils import GPSHandler, LocalLogger
-import cv2
-
-print("Testing components...")
-
-# 1. Test model loading
-print("1. Loading model...")
-loader = YOLOModelLoader("yolov5n")
-model = loader.load_model()
-print("   ✓ Model loaded")
-
-# 2. Test GPS
-print("2. Testing GPS...")
-gps = GPSHandler(use_simulation=True)
-lat, lon = gps.get_location()
-print(f"   ✓ Location: {lat}, {lon}")
-
-# 3. Test logger
-print("3. Testing logger...")
-logger = LocalLogger()
-logger.log_detection("Test", "0.0", "0.0")
-print("   ✓ Logger working")
-
-print("\n✓ All components tested successfully!")
-EOF
+export WEAPON_MODEL=/path/to/weapon.pt
+python3 app.py --no-uart --display
 ```
 
----
-
-## 📝 Project Structure
-
-```
-raspberryLora/
-├── main.py                      # Main orchestrator
-├── detector/
-│   ├── __init__.py
-│   ├── detect.py               # Detection logic
-│   └── model_loader.py         # Model loading
-├── lora/
-│   ├── __init__.py
-│   ├── serial_handler.py       # Serial communication
-│   └── send_lora.py            # LoRa messaging
-├── utils/
-│   ├── __init__.py
-│   ├── gps.py                  # GPS handler
-│   └── logger.py               # Event logging
-├── models/                      # Pre-trained models (auto-downloaded)
-├── logs/                        # Detection/error logs
-├── requirements.txt            # Python dependencies
-├── esp32_lora_receiver.ino     # ESP32 Arduino code
-└── README.md                   # This file
-```
-
----
-
-## ⚙️ Configuration Files
-
-### Environment Variables
+**STEP 6 — Detection events to UART**
 
 ```bash
-# Simulated GPS location
-export SIM_LAT="37.7749"
-export SIM_LON="-122.4194"
-
-# Serial ports
-export LORA_PORT="/dev/ttyUSB0"
-export GPS_PORT="/dev/ttyUSB1"
+python3 tools/test_uart.py "PERSON NO_WPN 2026-08-20 11:25:31"
+python3 app.py --display
 ```
 
----
+**STEP 7 — Complete application**
 
-## 🔐 Security Considerations
+```bash
+python3 app.py --display
+```
 
-1. **LoRa Broadcasts are Open**
-   - No encryption by default
-   - Add encryption in production
+## Troubleshooting
 
-2. **Local Network Only**
-   - LoRa range: ~2-5 km (outdoor, line of sight)
-   - ~100m typical urban environment
+**No `/dev/serial0`**
+Enable UART as above and reboot. On Pi 4 also disable Bluetooth overlay if
+the GPIO header is still attached to Mini-UART incorrectly.
 
-3. **Model Security**
-   - Models are downloaded from Ultralytics
-   - Verify model integrity if distributing
+**UART opens, mesh hears nothing**
+Confirm Serial Module TEXTMSG, TX=14, RX=13, baud 38400. Confirm TX/RX are
+crossed (Pi TX → T-Beam RX). Confirm common GND. Confirm the T-Beam is
+powered independently. Confirm channel/key match.
 
----
+**Permission denied on the serial device**
 
-## 📞 Support & Documentation
+```bash
+sudo usermod -aG dialout "$USER"
+# log out and back in
+```
 
-- **YOLOv5**: https://github.com/ultralytics/yolov5
-- **OpenCV**: https://docs.opencv.org/
-- **PyTorch**: https://pytorch.org/
-- **LoRa Library**: https://github.com/sandeepmistry/arduino-LoRa
-- **LILYGO LoRa32**: https://github.com/Xinyuan-LilyGO/LilyGO-LoRa-Series
+**Camera missing**
 
----
+```bash
+ls /dev/video*
+python3 -c "import cv2; c=cv2.VideoCapture(0); print(c.isOpened()); c.release()"
+```
 
-## 📄 License
+**Pi reboots while detecting**
+The process is too heavy. Use `--backend hog`, lower `--infer-size 256`,
+`--width 640 --height 360`, leave `--display` off, and do not load a second
+weapon model until person-only is stable.
 
-This project is provided as-is for educational and research purposes.
+**Always `PERSON NO_WPN` even with a visible weapon**
+Expected unless `WEAPON_MODEL` points at a file whose classes include your
+`WEAPON_CLASSES`. Stock `yolov8n.pt` is not a weapon detector.
 
----
+## Performance tuning / CPU / RAM
 
-## 🎯 Key Performance Metrics
+Target **5–10 inference FPS**, not full camera FPS.
 
-### Typical Performance (RPi 4B, 4GB RAM)
+| Knob | Lighter setting |
+|---|---|
+| Backend | `hog` then `yolo` |
+| Capture | `640x360` (or `640x480`) |
+| `INFER_SIZE` | `320` or `256` |
+| Display | off |
+| Weapon model | unset until needed |
+| Frame rate cap | `TARGET_INFERENCE_FPS=5` |
 
-| Metric | Value |
-|--------|-------|
-| Detection Latency | 200-300ms |
-| FPS (640x480) | 3-5 fps |
-| FPS (320x240) | 8-12 fps |
-| Memory Usage | 400-600 MB |
-| CPU Usage | 40-60% |
-| Model Size | ~7.5 MB (YOLOv5n) |
-| LoRa Message Latency | 50-100ms |
+YOLOv8n + PyTorch is the main RAM user (often several hundred MB). OpenCV HOG
+avoids PyTorch. Never queue camera frames; the capture buffer is size 1.
+The UART writer is a background thread so a blocked serial port cannot stall
+inference. Models are loaded once.
 
-### Optimization Impact
+CTRL+C and SIGTERM stop the camera, close OpenCV windows, and close UART.
 
-| Configuration | FPS | Memory (MB) | CPU (%) |
-|---------------|-----|-------------|---------|
-| Default (640x480) | 5 | 550 | 55 |
-| Skip 2 frames | 2.5 | 500 | 30 |
-| 320x240 resolution | 12 | 450 | 45 |
-| Skip 3 frames + 320x240 | 4 | 400 | 25 |
+## Project layout
 
----
-
-**Last Updated**: June 2026
-**Version**: 1.0
-**Status**: Production Ready ✓
+```
+app.py
+camera.py
+detector.py
+event_manager.py
+message_formatter.py
+uart_meshtastic.py
+config.py
+requirements.txt
+README.md
+tests/test_message_formatter.py
+tests/test_event_manager.py
+tests/test_detector.py
+tools/test_uart.py
+tools/receive_meshtastic.py
+```

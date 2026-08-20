@@ -1,0 +1,13 @@
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+logs/
+models/*.pt
+models/*.onnx
+models/*.engine
+*.jpg
+*.mp4
+.idea/
+.vscode/
