@@ -24,6 +24,7 @@ from detector import (
     PersonModelError,
     WeaponDetector,
     WeaponModelError,
+    cuda_torch_arm_warning,
     draw_detections,
 )
 from event_manager import EventManager
@@ -138,7 +139,7 @@ def print_startup_diagnostics(
         f"Python             : {platform.python_version()}",
         f"OpenCV             : {opencv_version()}",
         f"PyTorch            : {pytorch_version()}",
-        f"Person model       : {person.model_name} ({cfg.backend})",
+        f"Person model       : {person.model_name} ({cfg.backend}/{person.runtime})",
         f"Weapon model       : {weapon_name}",
         f"Camera resolution  : {cfg.frame_width}x{cfg.frame_height}",
         f"Person infer size  : {cfg.person_infer_size}",
@@ -151,6 +152,9 @@ def print_startup_diagnostics(
         "================",
     ]
     print("\n".join(lines))
+    warning = cuda_torch_arm_warning(pytorch_version(), platform.machine())
+    if warning:
+        print(warning, file=sys.stderr)
 
 
 def _mode_name(cfg: Config) -> str:

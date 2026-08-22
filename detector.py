@@ -171,8 +171,44 @@ def ensure_yolov5n_weights(path: str = DEFAULT_PERSON_MODEL) -> Path:
     return dest
 
 
+def cuda_torch_arm_warning(torch_version: str, machine: str) -> Optional[str]:
+    """Warn when a CUDA torch wheel is installed on ARM (common Pi SIGILL cause)."""
+    version = (torch_version or "").lower()
+    arch = (machine or "").lower()
+    arm = any(token in arch for token in ("aarch64", "armv7", "armv8", "arm64", "arm"))
+    if not arm:
+        return None
+    if "+cu" not in version and "cuda" not in version:
+        return None
+    return (
+        "WARNING: PyTorch looks like a CUDA wheel "
+        f"({torch_version}) on ARM ({machine}).\n"
+        "The Pi has no NVIDIA GPU. That wheel can crash with "
+        "Illegal instruction during YOLOv5 layer fusion.\n"
+        "Reinstall CPU torch, then retry:\n"
+        "  source venv/bin/activate\n"
+        "  pip uninstall -y torch torchvision\n"
+        "  pip freeze | grep -E '^(nvidia-|cuda-)' | cut -d= -f1 | xargs -r pip uninstall -y\n"
+        "  pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu\n"
+        "To prove the USB camera without YOLO: python3 app.py --person-only --display --backend hog\n"
+    )
+
+
+def _disable_ultralytics_fuse() -> None:
+    """Skip ultralytics BaseModel.fuse(); it can SIGILL on some ARM torch wheels."""
+    try:
+        from ultralytics.nn.tasks import BaseModel
+
+        def _skip_fuse(self, *args, **kwargs):
+            return self
+
+        BaseModel.fuse = _skip_fuse
+    except Exception:
+        pass
+
+
 def _load_yolov5_ultralytics(weights_path: str):
-    """Load YOLOv5 `.pt` weights through the ultralytics runtime (CPU)."""
+    """Load YOLOv5 `.pt` weights through the ultralytics runtime (CPU, no fuse)."""
     try:
         from ultralytics import YOLO
     except ImportError as exc:
@@ -182,14 +218,19 @@ def _load_yolov5_ultralytics(weights_path: str):
             "  source venv/bin/activate\n"
             "  pip install ultralytics\n"
         ) from exc
+    _disable_ultralytics_fuse()
     model = YOLO(str(weights_path))
     return model
 
 
 def _load_yolov5(weights_or_name: str):
     """
-    Load a YOLOv5 hub model once. Isolates torch.hub from this project on sys.path
-    so the hub 'utils' package cannot collide with a local package.
+    Load a YOLOv5 hub model once without fusing layers.
+
+    Isolates torch.hub from this project on sys.path so the hub 'utils'
+    package cannot collide with a local package. autoshape=False stops
+    DetectMultiBackend from calling fuse() (SIGILL on CUDA aarch64 wheels).
+    AutoShape is applied afterwards so model(image, size=...) still works.
     """
     import torch
 
@@ -209,37 +250,79 @@ def _load_yolov5(weights_or_name: str):
     ]
     try:
         path = Path(weights_or_name)
-        if path.is_file():
-            model = torch.hub.load(
-                "ultralytics/yolov5",
-                "custom",
-                path=str(path),
-                source="github",
-                trust_repo=True,
-                verbose=False,
-            )
+        hub_repo = Path.home() / ".cache" / "torch" / "hub" / "ultralytics_yolov5_master"
+        if hub_repo.is_dir():
+            repo, source = str(hub_repo), "local"
         else:
-            model = torch.hub.load(
-                "ultralytics/yolov5",
-                weights_or_name,
-                source="github",
-                trust_repo=True,
-                verbose=False,
-            )
+            repo, source = "ultralytics/yolov5", "github"
+        load_kw = {
+            "source": source,
+            "trust_repo": True,
+            "verbose": False,
+            "autoshape": False,
+        }
+        if path.is_file():
+            model = torch.hub.load(repo, "custom", path=str(path), **load_kw)
+        else:
+            model = torch.hub.load(repo, weights_or_name, **load_kw)
+        try:
+            import models.common as common
+
+            if not isinstance(model, common.AutoShape):
+                model = common.AutoShape(model)
+        except Exception:
+            pass
         if hasattr(model, "to"):
             model.to("cpu")
         if hasattr(model, "eval"):
             model.eval()
-        if hasattr(model, "fuse"):
-            try:
-                model.fuse()
-            except Exception:
-                pass
         return model
     finally:
         sys.path = saved_path
         for key, module in saved_modules.items():
             sys.modules.setdefault(key, module)
+
+
+def _predict_ultralytics(model, frame, infer_size, confidence, class_ids, max_det):
+    results = model.predict(
+        frame,
+        imgsz=infer_size,
+        conf=confidence,
+        classes=class_ids,
+        verbose=False,
+        device="cpu",
+        max_det=max_det,
+    )
+    if not results:
+        return []
+    boxes = getattr(results[0], "boxes", None)
+    if boxes is None:
+        return []
+    rows = []
+    xyxy = boxes.xyxy.cpu().numpy()
+    confs = boxes.conf.cpu().numpy()
+    clss = boxes.cls.cpu().numpy()
+    for bbox, conf, cls in zip(xyxy, confs, clss):
+        rows.append([*bbox, conf, cls])
+    return parse_yolov5_predictions(rows, confidence, allowed_class_ids=class_ids)
+
+
+def _predict_hub(model, frame, infer_size, confidence, class_ids, max_det):
+    import torch
+
+    if hasattr(model, "conf"):
+        model.conf = confidence
+    if hasattr(model, "classes"):
+        model.classes = class_ids
+    if hasattr(model, "max_det"):
+        model.max_det = max_det
+    with torch.inference_mode():
+        results = model(frame, size=infer_size)
+    return parse_yolov5_predictions(
+        _yolov5_xyxy(results),
+        confidence,
+        allowed_class_ids=class_ids,
+    )
 
 
 def _yolov5_xyxy(results) -> List:
@@ -427,7 +510,8 @@ class PersonDetector:
         self.person_class_ids: List[int] = [0]
         self._model = None
         self._hog = None
-        self._runtime = "hub"
+        self._runtime = "none"
+        self.runtime = "none"
         self._load()
 
     def _load(self) -> None:
@@ -438,6 +522,8 @@ class PersonDetector:
             hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
             self._hog = hog
             self.model_name = "opencv-hog"
+            self._runtime = "hog"
+            self.runtime = "hog"
             logger.info("Person detector: OpenCV HOG")
             return
 
@@ -446,16 +532,18 @@ class PersonDetector:
 
         weights = ensure_yolov5n_weights(self.model_path)
         errors = []
+        # Prefer ultralytics on the Pi. torch.hub YOLOv5 auto-fuses and can
+        # die with "Illegal instruction" on CUDA aarch64 wheels.
         try:
-            self._model = _load_yolov5(str(weights))
-            self._runtime = "hub"
-        except Exception as hub_exc:
-            errors.append(f"torch.hub: {hub_exc}")
+            self._model = _load_yolov5_ultralytics(str(weights))
+            self._runtime = "ultralytics"
+        except Exception as ultra_exc:
+            errors.append(f"ultralytics: {ultra_exc}")
             try:
-                self._model = _load_yolov5_ultralytics(str(weights))
-                self._runtime = "ultralytics"
-            except Exception as ultra_exc:
-                errors.append(f"ultralytics: {ultra_exc}")
+                self._model = _load_yolov5(str(weights))
+                self._runtime = "hub"
+            except Exception as hub_exc:
+                errors.append(f"torch.hub: {hub_exc}")
                 raise PersonModelError(
                     "ERROR: Failed to load the YOLOv5 person model.\n"
                     f"Tried: {weights}\n"
@@ -463,8 +551,11 @@ class PersonDetector:
                     "  source venv/bin/activate\n"
                     "  pip install ultralytics\n"
                     f"  mkdir -p models && wget -O {weights} {YOLOV5N_URL}\n"
+                    "If you see Illegal instruction, pip installed a CUDA "
+                    "torch wheel (+cu130). Reinstall CPU torch (see README), "
+                    "or prove the camera with --backend hog.\n"
                     "Detail:\n  " + "\n  ".join(errors)
-                ) from ultra_exc
+                ) from hub_exc
 
         names = getattr(self._model, "names", {0: "person"})
         self.class_names = inspect_class_names(names)
@@ -477,6 +568,7 @@ class PersonDetector:
             self._model.classes = self.person_class_ids
             self._model.max_det = 10
         self.model_name = weights.name
+        self.runtime = self._runtime
         logger.info(
             "Person detector: YOLOv5n %s runtime=%s imgsz=%s classes=%s",
             self.model_name,
@@ -519,39 +611,22 @@ class PersonDetector:
         return persons
 
     def _detect_yolov5(self, frame) -> List[Dict]:
-        import torch
-
         if self._runtime == "ultralytics":
-            results = self._model.predict(
+            return _predict_ultralytics(
+                self._model,
                 frame,
-                imgsz=self.infer_size,
-                conf=self.confidence,
-                classes=self.person_class_ids,
-                verbose=False,
-                device="cpu",
-                max_det=10,
+                self.infer_size,
+                self.confidence,
+                self.person_class_ids,
+                10,
             )
-            if not results:
-                return []
-            boxes = getattr(results[0], "boxes", None)
-            if boxes is None:
-                return []
-            rows = []
-            xyxy = boxes.xyxy.cpu().numpy()
-            confs = boxes.conf.cpu().numpy()
-            clss = boxes.cls.cpu().numpy()
-            for bbox, conf, cls in zip(xyxy, confs, clss):
-                rows.append([*bbox, conf, cls])
-            return parse_yolov5_predictions(
-                rows, self.confidence, allowed_class_ids=self.person_class_ids
-            )
-
-        with torch.inference_mode():
-            results = self._model(frame, size=self.infer_size)
-        return parse_yolov5_predictions(
-            _yolov5_xyxy(results),
+        return _predict_hub(
+            self._model,
+            frame,
+            self.infer_size,
             self.confidence,
-            allowed_class_ids=self.person_class_ids,
+            self.person_class_ids,
+            10,
         )
 
 
@@ -582,6 +657,7 @@ class WeaponDetector:
         self.selected_class_names: List[str] = []
         self._class_ids: List[int] = []
         self._model = None
+        self._runtime = "none"
         if required:
             self._load_required()
 
@@ -590,18 +666,28 @@ class WeaponDetector:
         if not path.is_file():
             raise WeaponModelError(weapon_model_missing_message(self.model_path))
 
+        errors = []
         try:
-            self._model = _load_yolov5(str(path))
-        except WeaponModelError:
-            raise
-        except Exception as exc:
-            raise WeaponModelError(
-                "ERROR: Failed to load the YOLOv5 weapon model.\n"
-                f"Path: {path}\n"
-                "The file must be a trained YOLOv5 weapon-detection weight "
-                "(not stock COCO YOLOv5, not YOLOv8).\n"
-                f"Detail: {exc}"
-            ) from exc
+            self._model = _load_yolov5_ultralytics(str(path))
+            self._runtime = "ultralytics"
+        except Exception as ultra_exc:
+            errors.append(f"ultralytics: {ultra_exc}")
+            try:
+                self._model = _load_yolov5(str(path))
+                self._runtime = "hub"
+            except WeaponModelError:
+                raise
+            except Exception as exc:
+                errors.append(f"torch.hub: {exc}")
+                raise WeaponModelError(
+                    "ERROR: Failed to load the YOLOv5 weapon model.\n"
+                    f"Path: {path}\n"
+                    "The file must be a trained YOLOv5 weapon-detection weight "
+                    "(not stock COCO YOLOv5, not YOLOv8).\n"
+                    "If you see Illegal instruction, reinstall CPU torch "
+                    "(see README).\n"
+                    "Detail:\n  " + "\n  ".join(errors)
+                ) from exc
 
         name_map = inspect_class_names(getattr(self._model, "names", None))
         if not name_map:
@@ -613,9 +699,10 @@ class WeaponDetector:
         self._class_ids, self.selected_class_names = resolve_weapon_class_ids(
             name_map, self.configured_class_names
         )
-        self._model.conf = self.confidence
-        self._model.classes = self._class_ids
-        self._model.max_det = 5
+        if self._runtime == "hub":
+            self._model.conf = self.confidence
+            self._model.classes = self._class_ids
+            self._model.max_det = 5
 
         try:
             self._warmup()
@@ -633,6 +720,7 @@ class WeaponDetector:
         print(f"Classes: {self.model_class_names}")
         print("Weapon model loaded:")
         print(str(path))
+        print(f"Runtime: {self._runtime} (fuse skipped)")
         print("Weapon classes:")
         print(str(self.model_class_names))
         print("Configured weapon classes:")
@@ -640,11 +728,9 @@ class WeaponDetector:
 
     def _warmup(self) -> None:
         import numpy as np
-        import torch
 
         dummy = np.zeros((self.infer_size, self.infer_size, 3), dtype=np.uint8)
-        with torch.inference_mode():
-            self._model(dummy, size=self.infer_size)
+        self._infer(dummy)
 
     def detect_in_region(self, frame, person_box: Box) -> Tuple[List[Dict], bool]:
         """
@@ -663,20 +749,13 @@ class WeaponDetector:
             return [], True
         crop = frame[y1:y2, x1:x2]
         try:
-            import torch
-
-            with torch.inference_mode():
-                results = self._model(crop, size=self.infer_size)
+            items = self._infer(crop)
         except Exception as exc:
             logger.warning("Weapon inference failed: %s", exc)
             return [], False
 
         found: List[Dict] = []
-        for item in parse_yolov5_predictions(
-            _yolov5_xyxy(results),
-            self.confidence,
-            allowed_class_ids=self._class_ids,
-        ):
+        for item in items:
             box = item["bbox"]
             found.append(
                 {
@@ -691,6 +770,25 @@ class WeaponDetector:
                 }
             )
         return found, True
+
+    def _infer(self, image) -> List[Dict]:
+        if self._runtime == "ultralytics":
+            return _predict_ultralytics(
+                self._model,
+                image,
+                self.infer_size,
+                self.confidence,
+                self._class_ids,
+                5,
+            )
+        return _predict_hub(
+            self._model,
+            image,
+            self.infer_size,
+            self.confidence,
+            self._class_ids,
+            5,
+        )
 
 
 class FrameClassifier:

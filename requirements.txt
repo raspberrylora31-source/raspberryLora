@@ -6,6 +6,11 @@ PyYAML>=6.0
 scipy>=1.10
 seaborn>=0.12
 tqdm>=4.64
+# On Raspberry Pi, a plain `pip install torch` may pull CUDA +cu130 wheels
+# that crash with Illegal instruction during YOLOv5 fuse. After this file:
+#   pip uninstall -y torch torchvision
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
 torch
 torchvision
 ultralytics>=8.3.0
+gitpython>=3.1.30

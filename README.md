@@ -159,8 +159,41 @@ torchvision, and `ultralytics` (the current YOLOv5 runtime needs these
 to load `yolov5n.pt` and `best.pt`).
 
 A generic `pip install torch` on the Pi may also pull unused NVIDIA
-CUDA wheels. They are not used. Do not install extra CUDA toolkits. The
-Pi runs inference on CPU.
+CUDA wheels (`torch==2.13.0+cu130` and `nvidia-*` packages). Those are
+not used. Do not install extra CUDA toolkits. The Pi runs inference on
+CPU.
+
+If startup dies like this:
+
+```
+YOLOv5 ... torch-2.13.0+cu130 CPU
+Fusing layers...
+Illegal instruction
+```
+
+that is the CUDA/aarch64 torch wheel crashing inside YOLOv5 `fuse()`.
+This app now loads YOLOv5 through `ultralytics` and skips layer fusion.
+Still replace the CUDA wheel with a CPU build:
+
+```bash
+source venv/bin/activate
+pip uninstall -y torch torchvision
+pip freeze | grep -E '^(nvidia-|cuda-)' | cut -d= -f1 | xargs -r pip uninstall -y
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+```
+
+Then:
+
+```bash
+git pull origin cursor/meshtastic-uart-detection-53d5
+python3 app.py --person-only --display
+```
+
+To prove the USB camera without PyTorch/YOLO:
+
+```bash
+python3 app.py --person-only --display --backend hog
+```
 
 # 8. Model installation
 

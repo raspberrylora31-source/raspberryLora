@@ -6,6 +6,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from detector import (
     classify_persons_and_weapons,
+    cuda_torch_arm_warning,
     parse_yolov5_predictions,
     resolve_weapon_class_ids,
     WeaponModelError,
@@ -96,6 +97,28 @@ class WeaponClassResolutionTests(unittest.TestCase):
     def test_person_only_model_is_invalid_weapon_model(self):
         with self.assertRaises(WeaponModelError):
             resolve_weapon_class_ids({0: "person"}, [])
+
+
+class CudaTorchWarningTests(unittest.TestCase):
+    def test_warns_on_cuda_wheel_on_arm(self):
+        text = cuda_torch_arm_warning("2.13.0+cu130", "aarch64")
+        self.assertIsNotNone(text)
+        self.assertIn("Illegal instruction", text)
+        self.assertIn("download.pytorch.org/whl/cpu", text)
+        self.assertIn("--backend hog", text)
+
+    def test_silent_on_cpu_torch(self):
+        self.assertIsNone(cuda_torch_arm_warning("2.5.1", "aarch64"))
+
+    def test_silent_on_x86_cuda(self):
+        self.assertIsNone(cuda_torch_arm_warning("2.13.0+cu130", "x86_64"))
+
+    def test_hub_loader_disables_autoshape_fuse(self):
+        source = Path(__file__).resolve().parent.parent.joinpath("detector.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('"autoshape": False', source)
+        self.assertIn("def _disable_ultralytics_fuse", source)
 
 
 if __name__ == "__main__":
