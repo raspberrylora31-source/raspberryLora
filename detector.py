@@ -447,55 +447,94 @@ def _load_yolov5_ultralytics(weights_path: str):
     return model
 
 
+def _yolov5_hub_repo() -> Path:
+    return Path.home() / ".cache" / "torch" / "hub" / "ultralytics_yolov5_master"
+
+
+def _sys_path_without_project_shadows(extra_first: Optional[Path] = None) -> List[str]:
+    """
+    torch.hub YOLOv5 imports `models.common`. This repo has a data directory
+    named models/ (weights), which shadows that package if cwd is on sys.path.
+    """
+    blocked = {
+        str(PROJECT_ROOT.resolve()),
+        os.path.abspath(os.getcwd()),
+        "",
+        ".",
+    }
+    cleaned = []
+    for item in sys.path:
+        if item in blocked:
+            continue
+        try:
+            if os.path.abspath(item) in blocked:
+                continue
+        except Exception:
+            pass
+        cleaned.append(item)
+    if extra_first is not None and extra_first.is_dir():
+        cleaned.insert(0, str(extra_first))
+    return cleaned
+
+
+def _purge_shadow_modules() -> Dict[str, object]:
+    saved = {}
+    for key in list(sys.modules):
+        if key in {"models", "utils"} or key.startswith(("models.", "utils.")):
+            saved[key] = sys.modules.pop(key)
+    return saved
+
+
 def _load_yolov5(weights_or_name: str):
     """
-    Load a YOLOv5 hub model once without fusing layers.
+    Load a classic YOLOv5 checkpoint via torch.hub.
 
-    Isolates torch.hub from this project on sys.path so the hub 'utils'
-    package cannot collide with a local package. autoshape=False stops
-    DetectMultiBackend from calling fuse() (SIGILL on CUDA aarch64 wheels).
-    AutoShape is applied afterwards so model(image, size=...) still works.
+    Official `ultralytics` YOLO() rejects custom YOLOv5 train.py weights
+    ("NOT forwards compatible with YOLOv8"). Hub load must not see this
+    project's models/ folder.
     """
     import torch
 
     saved_path = sys.path[:]
-    saved_modules = {
-        key: sys.modules[key]
-        for key in list(sys.modules)
-        if key == "utils" or key.startswith("utils.")
-    }
-    project_root = str(PROJECT_ROOT.resolve())
-    for key in saved_modules:
-        sys.modules.pop(key, None)
-    sys.path = [
-        item
-        for item in sys.path
-        if os.path.abspath(item) != os.path.abspath(project_root)
-    ]
+    saved_modules = _purge_shadow_modules()
+    hub_repo = _yolov5_hub_repo()
+    sys.path = _sys_path_without_project_shadows(
+        extra_first=hub_repo if (hub_repo / "hubconf.py").is_file() else None
+    )
     try:
         path = Path(weights_or_name)
-        hub_repo = Path.home() / ".cache" / "torch" / "hub" / "ultralytics_yolov5_master"
-        if hub_repo.is_dir():
-            repo, source = str(hub_repo), "local"
-        else:
-            repo, source = "ultralytics/yolov5", "github"
         load_kw = {
-            "source": source,
             "trust_repo": True,
             "verbose": False,
-            "autoshape": False,
+            "autoshape": True,
         }
-        if path.is_file():
-            model = torch.hub.load(repo, "custom", path=str(path), **load_kw)
-        else:
-            model = torch.hub.load(repo, weights_or_name, **load_kw)
-        try:
-            import models.common as common
-
-            if not isinstance(model, common.AutoShape):
-                model = common.AutoShape(model)
-        except Exception:
-            pass
+        model = None
+        errors = []
+        if path.is_file() and (hub_repo / "hubconf.py").is_file():
+            try:
+                model = torch.hub.load(
+                    str(hub_repo), "custom", path=str(path), source="local", **load_kw
+                )
+            except Exception as exc:
+                errors.append(f"local hub: {exc}")
+                model = None
+        if model is None:
+            repo = "ultralytics/yolov5"
+            try:
+                if path.is_file():
+                    model = torch.hub.load(
+                        repo, "custom", path=str(path), source="github", **load_kw
+                    )
+                else:
+                    model = torch.hub.load(
+                        repo, weights_or_name, source="github", **load_kw
+                    )
+            except Exception as exc:
+                errors.append(f"github hub: {exc}")
+                raise RuntimeError(
+                    "torch.hub could not load classic YOLOv5 weights.\n  "
+                    + "\n  ".join(errors)
+                ) from exc
         if hasattr(model, "to"):
             model.to("cpu")
         if hasattr(model, "eval"):
@@ -900,28 +939,26 @@ class WeaponDetector:
             ) from exc
 
         errors = []
+        # Custom YOLOv5 train.py weights are not loadable by ultralytics YOLO().
+        # Use torch.hub first. Keep the project's models/ weights dir off sys.path.
         try:
-            self._model = _load_yolov5_ultralytics(str(path))
-            self._runtime = "ultralytics"
-        except Exception as ultra_exc:
-            errors.append(f"ultralytics: {ultra_exc}")
+            self._model = _load_yolov5(str(path))
+            self._runtime = "hub"
+        except Exception as hub_exc:
+            errors.append(f"torch.hub: {hub_exc}")
             try:
-                self._model = _load_yolov5(str(path))
-                self._runtime = "hub"
-            except WeaponModelError:
-                raise
-            except Exception as exc:
-                errors.append(f"torch.hub: {exc}")
+                self._model = _load_yolov5_ultralytics(str(path))
+                self._runtime = "ultralytics"
+            except Exception as ultra_exc:
+                errors.append(f"ultralytics: {ultra_exc}")
                 raise WeaponModelError(
                     f"{WEAPON_UNAVAILABLE}\n"
                     "Failed to load the YOLOv5 weapon model.\n"
                     f"Path: {path}\n"
-                    "The file must be a trained YOLOv5 weapon-detection weight "
-                    "(not stock COCO YOLOv5, not YOLOv8).\n"
-                    "If you see Illegal instruction, reinstall CPU torch "
-                    "(see README).\n"
+                    "This file is a classic YOLOv5 checkpoint and must load "
+                    "through torch.hub, not the ultralytics YOLOv8 package.\n"
                     "Detail:\n  " + "\n  ".join(errors)
-                ) from exc
+                ) from ultra_exc
 
         name_map = inspect_class_names(getattr(self._model, "names", None))
         if not name_map:

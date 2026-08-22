@@ -5,6 +5,8 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from detector import (
+    PROJECT_ROOT,
+    _sys_path_without_project_shadows,
     classify_persons_and_weapons,
     cuda_torch_arm_warning,
     parse_yolov5_predictions,
@@ -131,12 +133,15 @@ class UnsafeTorchTests(unittest.TestCase):
     def test_silent_on_x86_cuda(self):
         self.assertIsNone(cuda_torch_arm_warning("2.13.0+cu130", "x86_64"))
 
-    def test_hub_loader_disables_autoshape_fuse(self):
+    def test_hub_loader_avoids_project_models_shadow(self):
         source = Path(__file__).resolve().parent.parent.joinpath("detector.py").read_text(
             encoding="utf-8"
         )
-        self.assertIn('"autoshape": False', source)
-        self.assertIn("def _disable_ultralytics_fuse", source)
+        self.assertIn("def _sys_path_without_project_shadows", source)
+        cleaned = _sys_path_without_project_shadows()
+        self.assertNotIn(str(PROJECT_ROOT.resolve()), cleaned)
+        self.assertNotIn("", cleaned)
+        self.assertNotIn(".", cleaned)
 
 
 if __name__ == "__main__":
