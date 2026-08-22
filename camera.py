@@ -1,4 +1,4 @@
-"""USB webcam capture with reconnect and small buffers."""
+"""USB webcam capture with a one-frame buffer and reconnect."""
 
 from __future__ import annotations
 
@@ -11,9 +11,15 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
+USB_CAMERA_ERROR = "ERROR: USB camera could not be opened."
+
+
+class CameraOpenError(Exception):
+    """Raised when the USB webcam (or video source) cannot be opened."""
+
 
 class Camera:
-    """Grab frames from a USB camera or a video file. Never raises to callers."""
+    """Grab the latest frame from a USB camera or a video file."""
 
     def __init__(
         self,
@@ -61,6 +67,16 @@ class Camera:
             self._cap = None
             return False
 
+    def open_or_raise(self) -> None:
+        """Open at startup or raise a clear CameraOpenError (no OpenCV traceback)."""
+        if self.open():
+            return
+        if self.video_file:
+            raise CameraOpenError(
+                f"ERROR: Video file could not be opened: {self.video_file}"
+            )
+        raise CameraOpenError(USB_CAMERA_ERROR)
+
     @property
     def source_name(self) -> str:
         if self.video_file:
@@ -74,8 +90,8 @@ class Camera:
         """
         Return one BGR frame, or None if the camera is unavailable.
 
-        Empty/failed frames do not crash the process. The camera is reopened
-        on a short backoff if the device disappears.
+        After a successful startup open, empty frames do not crash the process.
+        The camera is reopened on a short backoff if the device disappears.
         """
         if not self.is_open():
             now = time.monotonic()

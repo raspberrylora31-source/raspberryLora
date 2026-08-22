@@ -23,7 +23,7 @@ class EventManager:
     def __init__(
         self,
         confirmation_frames: int = 3,
-        cooldown_seconds: float = 30.0,
+        cooldown_seconds: float = 10.0,
         state_change_only: bool = False,
     ):
         if confirmation_frames < 1:

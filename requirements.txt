@@ -1,6 +1,5 @@
 opencv-python>=4.8
 numpy>=1.24,<2
 pyserial>=3.5
-
-# YOLO person detection (not required for --backend hog)
-ultralytics>=8.3.0
+torch
+torchvision

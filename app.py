@@ -1,25 +1,31 @@
 """
-Local person detection on Raspberry Pi with Meshtastic UART events.
+USB webcam person + YOLOv5 weapon detection on a Raspberry Pi.
 
-LoRa payload is a short TEXTMSG line such as:
-    PERSON NO_WPN 2026-08-20 11:25:31
+Confirmed events are sent as compact TEXTMSG lines over GPIO UART to a
+LILYGO T-Beam running Meshtastic. Images and video are never sent over LoRa.
 """
 
 from __future__ import annotations
 
 import argparse
 import logging
+import os
 import platform
 import signal
 import sys
 import time
 from pathlib import Path
 
-import cv2
-
-from camera import Camera
+from camera import Camera, CameraOpenError, USB_CAMERA_ERROR
 from config import Config
-from detector import FrameClassifier, PersonDetector, WeaponDetector, draw_detections
+from detector import (
+    FrameClassifier,
+    PersonDetector,
+    PersonModelError,
+    WeaponDetector,
+    WeaponModelError,
+    draw_detections,
+)
 from event_manager import EventManager
 from message_formatter import format_detection_message, format_timestamp
 from uart_meshtastic import MeshtasticUART
@@ -45,44 +51,137 @@ def raspberry_pi_model() -> str:
     return f"{platform.system()} {platform.machine()} (not a Raspberry Pi)"
 
 
-def print_startup_diagnostics(cfg: Config, person: PersonDetector, weapon: WeaponDetector) -> None:
-    weapon_name = weapon.model_name if weapon.enabled else "disabled"
+def pytorch_version() -> str:
+    try:
+        import torch
+
+        return torch.__version__
+    except Exception:
+        return "not imported"
+
+
+def opencv_version() -> str:
+    try:
+        import cv2
+
+        return cv2.__version__
+    except Exception:
+        return "not imported"
+
+
+def process_rss_mb() -> float:
+    try:
+        with open("/proc/self/status", encoding="utf-8") as handle:
+            for line in handle:
+                if line.startswith("VmRSS:"):
+                    return int(line.split()[1]) / 1024.0
+    except Exception:
+        pass
+    return 0.0
+
+
+def process_cpu_seconds() -> float:
+    try:
+        with open("/proc/self/stat", encoding="utf-8") as handle:
+            parts = handle.read().split()
+        ticks = os.sysconf("SC_CLK_TCK")
+        return (int(parts[13]) + int(parts[14])) / float(ticks)
+    except Exception:
+        return 0.0
+
+
+class ResourceMonitor:
+    """Low-frequency FPS / RAM / CPU reporter."""
+
+    def __init__(self):
+        now = time.monotonic()
+        self._window_start = now
+        self._infer_count = 0
+        self._cpu_start = process_cpu_seconds()
+        self.last_fps = 0.0
+
+    def mark_inference(self) -> None:
+        self._infer_count += 1
+
+    def maybe_report(self, now: float, interval: float = 10.0) -> None:
+        if now - self._window_start < interval:
+            return
+        elapsed = max(now - self._window_start, 1e-6)
+        self.last_fps = self._infer_count / elapsed
+        cpu_now = process_cpu_seconds()
+        cpu_pct = max(0.0, (cpu_now - self._cpu_start) / elapsed * 100.0)
+        ram_mb = process_rss_mb()
+        print(f"FPS: {self.last_fps:.1f}")
+        print(f"RAM: {ram_mb:.0f} MB")
+        print(f"CPU: {cpu_pct:.0f}%")
+        self._window_start = now
+        self._infer_count = 0
+        self._cpu_start = cpu_now
+
+
+def print_startup_diagnostics(
+    cfg: Config, person: PersonDetector, weapon: WeaponDetector | None
+) -> None:
+    if cfg.person_only:
+        weapon_name = "not loaded (person-only test)"
+        weapon_infer = "n/a"
+    elif weapon is not None and weapon.enabled:
+        weapon_name = f"{weapon.model_name} {weapon.selected_class_names}"
+        weapon_infer = str(cfg.weapon_infer_size)
+    else:
+        weapon_name = "ERROR not loaded"
+        weapon_infer = str(cfg.weapon_infer_size)
+
     lines = [
         "=== startup ===",
         f"Raspberry Pi model : {raspberry_pi_model()}",
         f"Python             : {platform.python_version()}",
-        f"OpenCV             : {cv2.__version__}",
+        f"OpenCV             : {opencv_version()}",
+        f"PyTorch            : {pytorch_version()}",
         f"Person model       : {person.model_name} ({cfg.backend})",
         f"Weapon model       : {weapon_name}",
-        f"Capture resolution : {cfg.frame_width}x{cfg.frame_height}",
-        f"Inference size     : {cfg.infer_size}",
+        f"Camera resolution  : {cfg.frame_width}x{cfg.frame_height}",
+        f"Person infer size  : {cfg.person_infer_size}",
+        f"Weapon infer size  : {weapon_infer}",
         f"Target infer FPS   : {cfg.target_inference_fps}",
         f"UART device        : {cfg.uart_port}",
         f"UART baud          : {cfg.uart_baud}",
         f"Display            : {cfg.enable_display}",
+        f"Mode               : {_mode_name(cfg)}",
         "================",
     ]
     print("\n".join(lines))
 
 
+def _mode_name(cfg: Config) -> str:
+    if cfg.person_only:
+        return "person-only camera test"
+    if cfg.no_uart:
+        return "full detection without UART"
+    return "full detection + UART"
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Raspberry Pi person detection -> Meshtastic TEXTMSG UART"
+        description="Raspberry Pi person + YOLOv5 weapon detection -> Meshtastic TEXTMSG"
     )
     parser.add_argument("--camera", type=int, default=None, help="USB camera index")
     parser.add_argument("--video-file", default=None, help="Video file instead of camera")
     parser.add_argument("--width", type=int, default=None, help="Capture width")
     parser.add_argument("--height", type=int, default=None, help="Capture height")
-    parser.add_argument("--infer-size", type=int, default=None, help="YOLO imgsz")
+    parser.add_argument("--person-infer-size", type=int, default=None)
+    parser.add_argument("--weapon-infer-size", type=int, default=None)
+    parser.add_argument("--infer-size", type=int, default=None, help="Alias for person infer size")
     parser.add_argument("--target-fps", type=float, default=None, help="Inference FPS cap")
     parser.add_argument(
         "--backend",
-        choices=["yolo", "hog"],
+        choices=["yolov5", "yolo", "hog"],
         default=None,
-        help="Person detector: yolov8n (default) or OpenCV HOG",
+        help="Person detector: yolov5n (default) or OpenCV HOG",
     )
-    parser.add_argument("--person-model", default=None, help="YOLO weights path")
-    parser.add_argument("--weapon-model", default=None, help="Optional weapon YOLO path")
+    parser.add_argument("--person-model", default=None, help="YOLOv5n weights path")
+    parser.add_argument("--weapon-model", default=None, help="YOLOv5 weapon weights (models/best.pt)")
+    parser.add_argument("--weapon-classes", default=None, help="Comma-separated model class names")
     parser.add_argument("--person-confidence", type=float, default=None)
     parser.add_argument("--weapon-confidence", type=float, default=None)
     parser.add_argument("--confirmation-frames", type=int, default=None)
@@ -90,9 +189,23 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--state-change-only", action="store_true")
     parser.add_argument("--uart-port", default=None, help="UART device path")
     parser.add_argument("--uart-baud", type=int, default=None)
-    parser.add_argument("--display", action="store_true", help="Show local preview")
-    parser.add_argument("--person-only", action="store_true", help="Skip weapon model")
-    parser.add_argument("--no-uart", action="store_true", help="Detect without UART send")
+    display = parser.add_mutually_exclusive_group()
+    display.add_argument("--display", action="store_true", help="Show local preview")
+    display.add_argument(
+        "--no-display",
+        action="store_true",
+        help="Headless mode (no X/desktop required)",
+    )
+    parser.add_argument(
+        "--person-only",
+        action="store_true",
+        help="USB camera + person boxes only (no weapon model, no UART)",
+    )
+    parser.add_argument(
+        "--no-uart",
+        action="store_true",
+        help="Full person+weapon test without UART/T-Beam",
+    )
     return parser.parse_args()
 
 
@@ -111,14 +224,17 @@ class DetectionApp:
             backend=cfg.backend,
             model_path=cfg.person_model,
             confidence=cfg.person_confidence_threshold,
-            infer_size=cfg.infer_size,
+            infer_size=cfg.person_infer_size,
         )
-        self.weapon_detector = WeaponDetector(
-            model_path="" if cfg.person_only else cfg.weapon_model,
-            class_names=cfg.weapon_class_list(),
-            confidence=cfg.weapon_confidence_threshold,
-            infer_size=cfg.infer_size,
-        )
+        self.weapon_detector = None
+        if not cfg.person_only:
+            self.weapon_detector = WeaponDetector(
+                model_path=cfg.weapon_model,
+                class_names=cfg.weapon_class_list(),
+                confidence=cfg.weapon_confidence_threshold,
+                infer_size=cfg.weapon_infer_size,
+                required=True,
+            )
         self.classifier = FrameClassifier(
             person_detector=self.person_detector,
             weapon_detector=self.weapon_detector,
@@ -131,7 +247,7 @@ class DetectionApp:
             state_change_only=cfg.state_change_only,
         )
         self.uart = None
-        if not cfg.no_uart:
+        if not cfg.no_uart and not cfg.person_only:
             self.uart = MeshtasticUART(port=cfg.uart_port, baud=cfg.uart_baud)
 
         signal.signal(signal.SIGINT, self._on_signal)
@@ -143,6 +259,13 @@ class DetectionApp:
 
     def run(self) -> None:
         print_startup_diagnostics(self.cfg, self.person_detector, self.weapon_detector)
+        try:
+            self.camera.open_or_raise()
+        except CameraOpenError as exc:
+            print(str(exc), file=sys.stderr)
+            self.shutdown()
+            raise
+
         if self.uart is not None:
             if not self.uart.connect():
                 logger.warning(
@@ -154,9 +277,10 @@ class DetectionApp:
             min_interval = 1.0 / self.cfg.target_inference_fps
 
         last_infer = 0.0
-        last_fps_report = time.monotonic()
-        infer_count = 0
         last_label = "NO PERSON"
+        monitor = ResourceMonitor()
+        persons: list = []
+        weapons: list = []
 
         while self.running:
             frame = self.camera.read()
@@ -167,22 +291,27 @@ class DetectionApp:
             now = time.monotonic()
             if min_interval and (now - last_infer) < min_interval:
                 if self.cfg.enable_display:
-                    display = draw_detections(frame, [], [], last_label)
-                    cv2.imshow("Detection", display)
-                    if cv2.waitKey(1) & 0xFF == ord("q"):
-                        break
+                    self._show(frame, persons, weapons, last_label, monitor.last_fps)
+                del frame
                 continue
 
             last_infer = now
-            state, persons, weapons = self.classifier.infer(frame)
-            infer_count += 1
+            try:
+                state, persons, weapons = self.classifier.infer(frame)
+            except WeaponModelError as exc:
+                print(str(exc), file=sys.stderr)
+                break
+            except Exception as exc:
+                logger.warning("Inference error: %s", exc)
+                state, persons, weapons = None, [], []
+            monitor.mark_inference()
 
-            emit_state = self.events.update(state, now=now)
+            emit_state = None
+            if not self.cfg.person_only:
+                emit_state = self.events.update(state, now=now)
             if emit_state is not None:
                 try:
-                    message = format_detection_message(
-                        emit_state, format_timestamp()
-                    )
+                    message = format_detection_message(emit_state, format_timestamp())
                 except ValueError as exc:
                     logger.warning("Malformed detection result: %s", exc)
                     message = None
@@ -191,6 +320,8 @@ class DetectionApp:
                     last_label = message
                     if self.uart is not None:
                         self.uart.send_message(message)
+            elif self.cfg.person_only:
+                last_label = "PERSON" if persons else "NO PERSON"
             elif state is None:
                 last_label = "NO PERSON"
             elif state == "WPN":
@@ -198,24 +329,36 @@ class DetectionApp:
             else:
                 last_label = "PERSON NO_WPN"
 
-            if now - last_fps_report >= 10.0:
-                fps = infer_count / (now - last_fps_report)
-                print(f"infer_fps={fps:.1f}")
-                infer_count = 0
-                last_fps_report = now
-
+            monitor.maybe_report(now)
             if self.cfg.enable_display:
-                display = draw_detections(frame, persons, weapons, last_label)
-                cv2.imshow("Detection", display)
-                if cv2.waitKey(1) & 0xFF == ord("q"):
-                    break
+                self._show(frame, persons, weapons, last_label, monitor.last_fps)
+            del frame
 
         self.shutdown()
+
+    def _show(self, frame, persons, weapons, last_label: str, fps: float) -> None:
+        try:
+            import cv2
+
+            overlay = last_label if fps <= 0 else f"{last_label}  FPS:{fps:.1f}"
+            display = draw_detections(frame, persons, weapons, overlay)
+            cv2.imshow("Detection", display)
+            if cv2.waitKey(1) & 0xFF == ord("q"):
+                self.running = False
+        except Exception as exc:
+            print(
+                "ERROR: Display is not available. Use --no-display for headless mode.",
+                file=sys.stderr,
+            )
+            logger.warning("Display failed: %s", exc)
+            self.cfg.enable_display = False
 
     def shutdown(self) -> None:
         self.running = False
         self.camera.release()
         try:
+            import cv2
+
             cv2.destroyAllWindows()
         except Exception:
             pass
@@ -235,6 +378,15 @@ def main() -> int:
     try:
         DetectionApp(cfg).run()
         return 0
+    except CameraOpenError as exc:
+        print(str(exc) if str(exc) else USB_CAMERA_ERROR, file=sys.stderr)
+        return 2
+    except WeaponModelError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    except PersonModelError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
     except Exception as exc:
         logger.error("Fatal error: %s", exc)
         return 1

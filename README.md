@@ -1,124 +1,112 @@
-# Raspberry Pi Person Detection over Meshtastic
+# 1. What the project does
 
-USB webcam detection on a Raspberry Pi. Persons are boxed locally. Confirmed
-events are sent as a short UART text line to a LILYGO T-Beam running Meshtastic.
-The T-Beam Serial Module (TEXTMSG) places that line on the LoRa mesh.
-
-This Pi application does **not** implement LoRa itself.
-
-## Project purpose
-
-- Capture frames from a USB webcam
-- Detect persons with a lightweight local model
-- Draw bounding boxes on an optional local display
-- Classify a confirmed person as `PERSON WPN` or `PERSON NO_WPN`
-- Timestamp the event from the Pi system clock
-- Send one compact ASCII line through GPIO UART to Meshtastic
-
-Example mesh text:
+This Raspberry Pi application watches a USB webcam, detects people, then
+runs a **trained YOLOv5 weapon model** on each person crop. Confirmed
+results are sent as a short UART text line to a LILYGO T-Beam running
+Meshtastic. Other Meshtastic nodes receive the text on the LoRa mesh.
 
 ```
-PERSON NO_WPN 2026-08-20 11:25:31
-PERSON WPN 2026-08-20 11:25:38
+PERSON WPN 2026-08-22 09:15:31
+PERSON NO_WPN 2026-08-22 09:16:04
 ```
 
-Images, video, coordinates, and JSON are never sent over LoRa.
+The Pi does all computer vision. The T-Beam only runs Meshtastic.
+Images, video, boxes, and JSON are never sent over LoRa.
 
-**Weapon detection is not enabled by default.** The stock person model is
-YOLOv8n (COCO). COCO has a `person` class and does not provide a reliable
-weapon class. `PERSON WPN` is emitted only when a separate weapon-class model
-file is supplied via `WEAPON_MODEL`. Until then, confirmed persons are
-`PERSON NO_WPN`.
+Weapon detection is a required feature of the production pipeline.
+`PERSON NO_WPN` means: a person was confirmed **and** `models/best.pt`
+ran on that person crop and found no configured weapon class. A missing
+weapon model is an error, not a NO_WPN event.
 
-## System architecture
+`--person-only` is a camera/person test. It does not load the weapon
+model and does not talk to the T-Beam.
 
-```
-USB webcam
-    -> camera.py          capture 640x360 (configurable), 1-frame buffer
-    -> detector.py        person model once; optional weapon model on person crops
-    -> event_manager.py   confirm N frames, cooldown, state-change
-    -> message_formatter.py   PERSON <WPN|NO_WPN> <timestamp>
-    -> uart_meshtastic.py     background UART writer
-    -> Raspberry Pi GPIO UART (/dev/serial0, 38400)
-    -> T-Beam Serial Module TEXTMSG
-    -> Meshtastic LoRa mesh
-```
+# 2. Hardware
 
-`app.py` is the only process you run for the full pipeline.
-
-## Hardware
-
-- Raspberry Pi (this project targets **Raspberry Pi 4B**; 4GB RAM recommended)
+- Raspberry Pi (Pi 4B, 4GB RAM recommended)
 - USB webcam
 - LILYGO T-Beam with Meshtastic firmware
+- LoRa antenna on the T-Beam
+- Independent power for the Pi and for the T-Beam (USB or supported T-Beam power)
 - Three jumper wires: TX, RX, GND
-- Independent power for the T-Beam (do **not** power it from Pi 5V on the UART)
 
-## Exact UART wiring
+Do not power the T-Beam UART from Raspberry Pi 5V.
 
-TX and RX are crossed. Use a common GND. Do not connect Pi 5V to the T-Beam UART.
+# 3. Architecture
 
 ```
-Raspberry Pi                         LILYGO T-Beam
-
-GPIO14 / TXD
-Physical pin 8  ------------------>  GPIO13 / RX
-
-GPIO15 / RXD
-Physical pin 10 <------------------  GPIO14 / TX
-
-GND
-Physical pin 6  -------------------  GND
+USB camera
+→ person detector (YOLOv5n)
+→ person bounding box
+→ YOLOv5 weapon detector (models/best.pt) on each person crop
+→ event manager (confirmation + cooldown)
+→ timestamp (Pi clock)
+→ compact text
+→ GPIO UART /dev/serial0 @ 38400
+→ Meshtastic Serial TEXTMSG
+→ LoRa mesh
 ```
 
-| Raspberry Pi | Function | T-Beam |
-|---|---|---|
-| Physical pin 8 / GPIO14 | TXD | GPIO13 RX |
-| Physical pin 10 / GPIO15 | RXD | GPIO14 TX |
-| Physical pin 6 | GND | GND |
+`app.py` is the only process you run for detection.
 
-GPIO13/GPIO14 are the recommended T-Beam UART pins for this Meshtastic serial
-connection.
+# 4. UART wiring
 
-The visible T-Beam GPIO1/GPIO3 TX/RX pins are UART0. They are shared with USB
-serial/programming, so they are **not** the preferred pins for this integration.
+## Raspberry Pi                         LILYGO T-Beam
 
-Pi GPIO UART is 3.3 V. The T-Beam UART is 3.3 V. Direct TX/RX/GND is correct.
+Physical pin 8
+GPIO14 / TXD  --------------------> GPIO13 / RX
 
-## Meshtastic configuration
+Physical pin 10
+GPIO15 / RXD  <-------------------- GPIO14 / TX
 
-Flash Meshtastic onto the T-Beam, then enable the Serial Module:
+Physical pin 6
+GND          ---------------------- GND
+
+Important:
+
+Pi TX → T-Beam RX
+Pi RX ← T-Beam TX
+GND → GND
+
+Do NOT connect Raspberry Pi 5V to the T-Beam UART.
+
+Power the T-Beam appropriately through its own supported power/USB arrangement.
+
+The T-Beam serial pins used by this application are:
+
+GPIO13 = RX
+GPIO14 = TX
+
+Do not use GPIO1/GPIO3 for this application because those are associated with the ESP32 UART0/USB serial path.
+
+# 5. Meshtastic configuration
+
+Flash Meshtastic onto the T-Beam. Configure the Serial Module:
 
 | Setting | Value |
 |---|---|
-| Enabled | YES |
-| Mode | TEXTMSG |
-| TX GPIO | 14 |
-| RX GPIO | 13 |
+| Serial enabled | YES |
+| Serial mode | TEXTMSG |
+| Serial RX | GPIO13 |
+| Serial TX | GPIO14 |
 | Baud | 38400 |
-
-CLI example (use the T-Beam USB port while configuring, not the Pi UART):
 
 ```bash
 meshtastic --set serial.enabled true
 meshtastic --set serial.mode TEXTMSG
-meshtastic --set serial.txd 14
 meshtastic --set serial.rxd 13
+meshtastic --set serial.txd 14
 meshtastic --set serial.baud 38400
 ```
 
-Put the T-Beam and every receiving node on the same channel and key. After
-configuration, disconnect the USB serial session if it would fight the GPIO
-UART, power the T-Beam on its own supply, and wire TX/RX/GND as above.
+The Pi writes newline-terminated ASCII. Meshtastic TEXTMSG places that
+line on the mesh. Other nodes on the same channel receive it as a normal
+text message. This project does not implement a custom LoRa protocol and
+does not use custom ESP32 firmware.
 
-The Pi never talks a custom LoRa protocol. It only writes a newline-terminated
-text line. Meshtastic TEXTMSG turns that line into a normal mesh text message.
+# 6. Raspberry Pi UART setup
 
-## Raspberry Pi UART configuration
-
-Preferred device: `/dev/serial0` (override with `UART_PORT`).
-
-1. Disable the serial login console and enable the serial hardware:
+1. Enable hardware serial and disable the serial login console:
 
 ```bash
 sudo raspi-config
@@ -127,31 +115,34 @@ sudo raspi-config
 #   serial port hardware enabled: Yes
 ```
 
-2. On Raspberry Pi 4, free the PL011 UART from Bluetooth if `/dev/serial0`
-   is not on the GPIO header. In `/boot/firmware/config.txt` (Bookworm) or
-   `/boot/config.txt`:
+2. On Raspberry Pi 4, put this in `/boot/firmware/config.txt` (Bookworm)
+   or `/boot/config.txt`:
 
 ```
 enable_uart=1
 dtoverlay=disable-bt
 ```
 
-3. Reboot, then confirm the device and permissions:
+3. Reboot, then verify:
 
 ```bash
 sudo reboot
 ls -l /dev/serial0
+groups
 sudo usermod -aG dialout "$USER"
 ```
 
-Default baud is **38400** (`UART_BAUD`).
+Log out and back in so `groups` shows `dialout`. Default device is
+`/dev/serial0` at **38400** baud.
 
-## Installation
+# 7. Python environment
+
+CPU only. The Pi does not need CUDA.
 
 ```bash
 sudo apt-get update
 sudo apt-get install -y python3-venv python3-dev build-essential \
-    libgl1 libglib2.0-0 libopenjp2-7 libtiff6 libatlas-base-dev
+    libgl1 libglib2.0-0 libopenjp2-7 libatlas-base-dev
 
 cd /path/to/raspberryLora
 python3 -m venv venv
@@ -161,230 +152,233 @@ pip install -r requirements.txt
 mkdir -p models
 ```
 
-Place `models/yolov8n.pt` on the Pi if you can (about 6 MB). If the file is
-missing and `DETECTION_BACKEND=yolo`, Ultralytics may download `yolov8n.pt`
-once. Do not point this project at large YOLO weights (`yolov8s/m/l/x`,
-YOLOv5m+, etc.).
+`requirements.txt` installs OpenCV, NumPy, pyserial, and CPU PyTorch /
+torchvision so YOLOv5 can load `yolov5n.pt` and `best.pt`.
 
-If the Pi restarts under YOLO (RAM), skip the neural-net extra packages and
-use HOG:
+# 8. Model installation
 
-```bash
-pip install opencv-python numpy pyserial
-python3 app.py --backend hog --display
+Place these files in `models/`:
+
+| File | Role |
+|---|---|
+| `models/yolov5n.pt` | Lightweight YOLOv5n person detector |
+| `models/best.pt` | **Required** trained YOLOv5 weapon model |
+
+`models/best.pt` must be **your** trained YOLOv5 weapon-detection
+weights. Do not use stock COCO YOLOv5 and pretend it detects weapons.
+Do not use a YOLOv8 weapon export.
+
+If `models/yolov5n.pt` is missing, the person detector may download
+official YOLOv5n through torch.hub (needs network). Copying
+`models/yolov5n.pt` onto the Pi is the reliable offline method.
+
+If `models/best.pt` is missing, full detection **refuses to start**:
+
+```
+ERROR: Weapon detection is required but models/best.pt was not found.
+
+Please place the trained YOLOv5 weapon model at:
+
+models/best.pt
 ```
 
-## Running the program
+It will not emit `PERSON NO_WPN` in that situation.
+
+At startup the app prints the model's real class names. Set
+`WEAPON_CLASSES` to names that exist in **that** model.
 
 ```bash
+# Empty = every non-person class in best.pt
+export WEAPON_CLASSES=
+
+# Single-class model {0: weapon}
+export WEAPON_CLASSES=weapon
+
+# Multi-class model {0: person, 1: pistol, 2: rifle}
+export WEAPON_CLASSES=pistol,rifle
+```
+
+Never list `person` as a weapon class. If the configured names are not
+in the model, full detection exits with an error.
+
+# 9. CAMERA TEST
+
+Prove the USB webcam and person boxes **before** loading the weapon
+model. This mode does not need UART, the T-Beam, or `models/best.pt`.
+
+These files must exist in the project directory (`app.py` or `main.py`).
+If `python3` reports `can't open file .../app.py`, this tree is not on
+the Pi yet — update the checkout, then run from that directory.
+
+```bash
+cd ~/raspberryLora
+ls app.py main.py
 source venv/bin/activate
-
-# Full pipeline (GPIO UART -> T-Beam)
-python3 app.py --display
-
-# Detection only (no UART)
-python3 app.py --no-uart --display --person-only
-
-# HOG backend (lightest, no PyTorch)
-python3 app.py --backend hog --display
+python3 app.py --person-only --display
+# same program:
+python3 main.py --person-only --display
 ```
 
-Useful environment variables:
+Success looks like:
+
+- a live camera window
+- green `PERSON` boxes on people
+- `FPS` on the overlay
+- every ~10 seconds in the terminal:
+
+```
+FPS: 5.2
+RAM: 620 MB
+CPU: 72%
+```
+
+Headless (no X/desktop):
 
 ```bash
-export UART_PORT=/dev/serial0
-export UART_BAUD=38400
-export FRAME_WIDTH=640
-export FRAME_HEIGHT=360
-export INFER_SIZE=320
-export TARGET_INFERENCE_FPS=7
-export PERSON_CONFIDENCE_THRESHOLD=0.45
-export WEAPON_CONFIDENCE_THRESHOLD=0.40
-export CONFIRMATION_FRAMES=3
-export EVENT_COOLDOWN_SECONDS=30
+python3 app.py --person-only --no-display
 ```
 
-## Detection configuration
-
-| Variable / flag | Default | Meaning |
-|---|---|---|
-| `DETECTION_BACKEND` / `--backend` | `yolo` | `yolo` (YOLOv8n) or `hog` |
-| `PERSON_MODEL` / `--person-model` | `models/yolov8n.pt` | Person weights |
-| `WEAPON_MODEL` / `--weapon-model` | empty | Optional weapon-class model |
-| `PERSON_CONFIDENCE_THRESHOLD` | `0.45` | Person score |
-| `WEAPON_CONFIDENCE_THRESHOLD` | `0.40` | Weapon score |
-| `INFER_SIZE` | `320` | YOLO input size |
-| `FRAME_WIDTH` x `FRAME_HEIGHT` | `640x360` | Capture size |
-| `TARGET_INFERENCE_FPS` | `7` | Cap inference rate (5–10 target) |
-| `CONFIRMATION_FRAMES` | `3` | Consistent frames before an event |
-| `EVENT_COOLDOWN_SECONDS` | `30` | Repeat of the same state |
-| `STATE_CHANGE_ONLY` | `false` | If true, never resend the same state |
-| `--person-only` | off | Do not load a weapon model |
-| `--display` | off | Local OpenCV preview with boxes |
-| `--no-uart` | off | Run vision without the radio |
-
-Person detection and weapon classification are separate. Flow:
-
-1. Detect persons on the frame
-2. If a weapon model is enabled, run it on each expanded person crop
-3. A weapon counts only when it overlaps that person region
-4. No person in the frame → no `PERSON WPN` event
-5. A weapon outside every person region is drawn as `WPN` locally but does
-   not generate a mesh event
-
-## Message format
-
-Built only by `format_detection_message()` in `message_formatter.py`:
+If the webcam is missing:
 
 ```
-PERSON NO_WPN YYYY-MM-DD HH:MM:SS
-PERSON WPN YYYY-MM-DD HH:MM:SS
+ERROR: USB camera could not be opened.
 ```
 
-Timestamp is the Pi local clock, without milliseconds.
+# 10. WEAPON DETECTION TEST
 
-## Receiver setup
-
-Receivers do **not** run this Raspberry Pi application.
-
-Any Meshtastic node (phone app, another T-Beam, a T-Echo, etc.) on the same
-channel already shows the text as a normal chat message.
-
-Optional: if a computer is attached to a receiving node that also has Serial
-TEXTMSG enabled, print incoming lines:
+After the camera test works, and after `models/best.pt` is in place:
 
 ```bash
-python3 tools/receive_meshtastic.py --port /dev/ttyUSB0 --baud 38400
-```
-
-Output:
-
-```
-RECEIVED:
-PERSON NO_WPN 2026-08-20 11:25:31
-```
-
-## Bring-up sequence
-
-Do not debug camera inference and UART at the same time.
-
-**STEP 1 — UART only**
-
-```bash
-python3 tools/test_uart.py "hello"
-```
-
-**STEP 2 — Mesh text**
-
-```bash
-python3 tools/test_uart.py "TEST MESHTASTIC UART"
-```
-
-Confirm `TEST MESHTASTIC UART` on another Meshtastic node.
-
-**STEP 3 — Message formatter**
-
-```bash
-python3 -m unittest tests.test_message_formatter -v
-```
-
-**STEP 4 — Person detection only**
-
-```bash
-python3 app.py --no-uart --person-only --display
-```
-
-**STEP 5 — Weapon classification**
-
-Only after a real weapon-class model file exists:
-
-```bash
-export WEAPON_MODEL=/path/to/weapon.pt
 python3 app.py --no-uart --display
 ```
 
-**STEP 6 — Detection events to UART**
+This verifies:
+
+- USB camera
+- person detection
+- YOLOv5 weapon detection on person crops
+- `PERSON WPN` / `PERSON NO_WPN` boxes
+- no LoRa / UART
+
+This is the main pre-production acceptance test.
+
+# 11. UART TEST
+
+Test the radio **before** debugging computer vision.
 
 ```bash
-python3 tools/test_uart.py "PERSON NO_WPN 2026-08-20 11:25:31"
+python3 tools/test_uart.py "TEST MESHTASTIC UART"
+python3 tools/test_uart.py "PERSON NO_WPN 2026-08-22 09:15:31"
+```
+
+Another Meshtastic node on the same channel should show those exact
+lines. If this fails, fix wiring and Serial TEXTMSG first.
+
+# 12. FULL PRODUCTION RUN
+
+```bash
+source venv/bin/activate
 python3 app.py --display
 ```
 
-**STEP 7 — Complete application**
+Headless:
 
 ```bash
-python3 app.py --display
+source venv/bin/activate
+python3 app.py --no-display
 ```
 
-## Troubleshooting
+This runs person detection, YOLOv5 weapon detection, confirmation,
+Pi timestamp, and UART → T-Beam → Meshtastic. A receiving node should
+show:
 
-**No `/dev/serial0`**
-Enable UART as above and reboot. On Pi 4 also disable Bluetooth overlay if
-the GPIO header is still attached to Mini-UART incorrectly.
+```
+PERSON NO_WPN 2026-08-22 09:15:31
+PERSON WPN 2026-08-22 09:16:04
+```
 
-**UART opens, mesh hears nothing**
-Confirm Serial Module TEXTMSG, TX=14, RX=13, baud 38400. Confirm TX/RX are
-crossed (Pi TX → T-Beam RX). Confirm common GND. Confirm the T-Beam is
-powered independently. Confirm channel/key match.
+# 13. Environment variables/configuration
 
-**Permission denied on the serial device**
+| Variable | Default | Meaning |
+|---|---|---|
+| `UART_PORT` | `/dev/serial0` | GPIO UART device |
+| `UART_BAUD` | `38400` | Meshtastic serial baud |
+| `PERSON_CONFIDENCE_THRESHOLD` | `0.45` | Person score |
+| `WEAPON_CONFIDENCE_THRESHOLD` | `0.40` | Weapon score |
+| `WEAPON_CLASSES` | empty (auto) | Names from `best.pt` |
+| `CONFIRMATION_FRAMES` | `3` | Frames before an event |
+| `EVENT_COOLDOWN_SECONDS` | `10` | Repeat of the same state |
+| `TARGET_INFERENCE_FPS` | `5` | Inference cap (try 7 if stable) |
+| `CAMERA_WIDTH` | `640` | Capture width |
+| `CAMERA_HEIGHT` | `360` | Capture height |
+| `PERSON_INFER_SIZE` | `320` | YOLOv5n input size |
+| `WEAPON_INFER_SIZE` | `256` | Weapon crop input size |
+| `WEAPON_MODEL` | `models/best.pt` | Trained YOLOv5 weapon weights |
+| `PERSON_MODEL` | `models/yolov5n.pt` | YOLOv5n person weights |
+
+# 14. Performance troubleshooting
+
+The Pi has restarted under a heavy vision load. Keep weapon detection
+**enabled**. Reduce work in this order:
+
+1. Display — use `--no-display`
+2. Inference FPS — `TARGET_INFERENCE_FPS=5` (do not chase 30 FPS)
+3. Inference resolution — `PERSON_INFER_SIZE=256`, `WEAPON_INFER_SIZE=192`
+4. Camera resolution — `CAMERA_WIDTH=640`, `CAMERA_HEIGHT=360`
+
+Do not disable the weapon detector to save CPU.
+
+Monitor on the Pi:
 
 ```bash
-sudo usermod -aG dialout "$USER"
-# log out and back in
+free -h
+top
+htop
+vcgencmd measure_temp
+vcgencmd get_throttled
 ```
 
-**Camera missing**
+The app also prints `FPS` / `RAM` / `CPU` about every 10 seconds.
 
-```bash
-ls /dev/video*
-python3 -c "import cv2; c=cv2.VideoCapture(0); print(c.isOpened()); c.release()"
-```
+# 15. Troubleshooting
 
-**Pi reboots while detecting**
-The process is too heavy. Use `--backend hog`, lower `--infer-size 256`,
-`--width 640 --height 360`, leave `--display` off, and do not load a second
-weapon model until person-only is stable.
+**`can't open file '.../app.py'`**
+The Pi still has the old tree (it had `main.py` only). Get the updated
+files, `cd` into that directory, and run `ls app.py`. `main.py` is a
+wrapper for the same program.
 
-**Always `PERSON NO_WPN` even with a visible weapon**
-Expected unless `WEAPON_MODEL` points at a file whose classes include your
-`WEAPON_CLASSES`. Stock `yolov8n.pt` is not a weapon detector.
+**Camera not detected**
+`ls /dev/video*` then `python3 app.py --person-only --display`.
+If it fails: `ERROR: USB camera could not be opened.`
 
-## Performance tuning / CPU / RAM
+**Model missing**
+Full mode without `models/best.pt` exits with the required-model error.
+Copy the trained YOLOv5 weapon weights to `models/best.pt`.
 
-Target **5–10 inference FPS**, not full camera FPS.
+**Weapon class missing**
+Startup prints the model's classes. Set `WEAPON_CLASSES` to those names.
+A mismatch is an error, not a silent NO_WPN.
 
-| Knob | Lighter setting |
-|---|---|
-| Backend | `hog` then `yolo` |
-| Capture | `640x360` (or `640x480`) |
-| `INFER_SIZE` | `320` or `256` |
-| Display | off |
-| Weapon model | unset until needed |
-| Frame rate cap | `TARGET_INFERENCE_FPS=5` |
+**RAM too high**
+Lower infer sizes and FPS. Confirm with `free -h` and the 10-second RAM line.
 
-YOLOv8n + PyTorch is the main RAM user (often several hundred MB). OpenCV HOG
-avoids PyTorch. Never queue camera frames; the capture buffer is size 1.
-The UART writer is a background thread so a blocked serial port cannot stall
-inference. Models are loaded once.
+**CPU too high**
+`--no-display`, `TARGET_INFERENCE_FPS=5`, smaller infer sizes. Use `top`.
 
-CTRL+C and SIGTERM stop the camera, close OpenCV windows, and close UART.
+**Pi overheating**
+`vcgencmd measure_temp` and `vcgencmd get_throttled`. Add a heatsink/fan.
 
-## Project layout
+**UART missing**
+`ls -l /dev/serial0`. Enable hardware serial, disable serial console, reboot.
 
-```
-app.py
-camera.py
-detector.py
-event_manager.py
-message_formatter.py
-uart_meshtastic.py
-config.py
-requirements.txt
-README.md
-tests/test_message_formatter.py
-tests/test_event_manager.py
-tests/test_detector.py
-tools/test_uart.py
-tools/receive_meshtastic.py
-```
+**Meshtastic not receiving**
+Pass `tools/test_uart.py` first. Confirm TEXTMSG, GPIO13 RX, GPIO14 TX, 38400.
+
+**TX/RX reversed**
+Pi GPIO14 TX must go to T-Beam GPIO13 RX.
+
+**No common GND**
+Pi physical pin 6 must connect to T-Beam GND.
+
+**Serial console still enabled**
+Login-shell-over-serial must be No or `/dev/serial0` is not free.

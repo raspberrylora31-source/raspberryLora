@@ -8,9 +8,12 @@ import threading
 import time
 from typing import Optional
 
-import serial
-
 logger = logging.getLogger(__name__)
+
+try:
+    import serial
+except ImportError:  # unit tests may mock the serial class
+    serial = None
 
 _ERROR_LOG_INTERVAL_SEC = 10.0
 
@@ -28,9 +31,11 @@ class MeshtasticUART:
         port: str = "/dev/serial0",
         baud: int = 38400,
         queue_size: int = 16,
+        serial_cls=None,
     ):
         self.port = port
         self.baud = baud
+        self._serial_cls = serial_cls
         self._queue: queue.Queue[str] = queue.Queue(maxsize=queue_size)
         self._stop = threading.Event()
         self._thread: Optional[threading.Thread] = None
@@ -124,7 +129,7 @@ class MeshtasticUART:
             try:
                 with self._lock:
                     if self._ser is None:
-                        raise serial.SerialException("UART not open")
+                        raise OSError("UART not open")
                     self._ser.write(payload)
                     self._ser.flush()
             except Exception as exc:
@@ -141,12 +146,17 @@ class MeshtasticUART:
     def _open_serial(self) -> bool:
         self._close_serial()
         try:
-            ser = serial.Serial(
+            opener = self._serial_cls
+            if opener is None:
+                if serial is None:
+                    raise RuntimeError("pyserial is required on the Raspberry Pi")
+                opener = serial.Serial
+            ser = opener(
                 port=self.port,
                 baudrate=self.baud,
-                bytesize=serial.EIGHTBITS,
-                parity=serial.PARITY_NONE,
-                stopbits=serial.STOPBITS_ONE,
+                bytesize=8,
+                parity="N",
+                stopbits=1,
                 timeout=0.1,
                 write_timeout=1.0,
             )

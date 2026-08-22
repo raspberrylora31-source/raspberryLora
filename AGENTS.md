@@ -2,58 +2,40 @@
 
 ## Product overview
 
-Single Python process: USB-webcam person detection on a Raspberry Pi, optional
-local preview, compact TEXTMSG events over GPIO UART to a LILYGO T-Beam running
-Meshtastic. Entry point is `app.py`. There is no web server, database, GPS,
-custom ESP32 LoRa firmware, or Docker stack.
+Single Python process on a Raspberry Pi:
 
-## Environment (Cloud VM vs Raspberry Pi)
+USB webcam → YOLOv5n person detection → YOLOv5 weapon model on person
+crops (`models/best.pt`) → debounce → compact TEXTMSG over GPIO UART →
+LILYGO T-Beam Meshtastic.
 
-- **Cloud VM / x86:** Python 3.12 is typical. Install `pip install -r requirements.txt`.
-  There is no USB camera or T-Beam; use `--video-file` and `--no-uart`, or a
-  virtual serial port for UART tests.
-- **Raspberry Pi (target):** Raspberry Pi 4B, Python 3.9+, GPIO UART
-  `/dev/serial0` @ 38400 to a T-Beam Serial Module in TEXTMSG mode.
+Entry point is `app.py`. There is no web server, database, GPS, custom
+ESP32 LoRa firmware, or Docker stack.
 
-System packages on Ubuntu/Debian VMs:
+Weapon detection is required for full mode. `--person-only` is a camera
+test that skips the weapon model and UART.
 
-```bash
-sudo apt-get install -y python3-venv python3-dev build-essential libgl1 libglib2.0-0
-```
-
-## Activate and run
+## Modes
 
 ```bash
 source venv/bin/activate
 
-# Raspberry Pi with USB camera + T-Beam on GPIO UART
+# Camera + person boxes (no weapon model, no UART)
+python3 app.py --person-only --display
+python3 app.py --person-only --no-display
+
+# Person + YOLOv5 weapon, no UART
+python3 app.py --no-uart --display
+
+# Production: person + weapon + UART
 python3 app.py --display
-
-# Person detection only (no UART, no weapon model)
-python3 app.py --no-uart --person-only --display
-
-# Cloud VM / no camera
-python3 app.py --no-uart --person-only --video-file /tmp/test_feed.mp4
+python3 app.py --no-display
 ```
+
+Full mode exits if `models/best.pt` is missing. It does not emit
+PERSON NO_WPN in that case.
 
 ## Verify without hardware
 
-Formatter, debounce, and person/weapon association tests (no model download):
-
 ```bash
-source venv/bin/activate
-python3 -m unittest tests.test_message_formatter tests.test_event_manager tests.test_detector -v
+python3 -m unittest discover -s tests -v
 ```
-
-UART smoke test (requires a serial device):
-
-```bash
-python3 tools/test_uart.py "TEST MESHTASTIC UART"
-```
-
-## Lint / tests
-
-- No project linter config.
-- Unit tests live in `tests/test_*.py`.
-- Stock YOLOv8n is person-only. Do not claim `PERSON WPN` works unless
-  `WEAPON_MODEL` is a real weapon-class weight file.

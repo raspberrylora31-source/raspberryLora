@@ -1,21 +1,215 @@
 """
-Person detection plus optional weapon classification.
+Person detection (YOLOv5n) plus required YOLOv5 weapon detection.
 
-COCO YOLO models detect persons. They do not include a real weapon class.
-Weapon detection is therefore a separate optional model. If no weapon model
-file is configured, every confirmed person is classified PERSON NO_WPN.
+Full detection mode loads models/best.pt once at startup. A missing or invalid
+weapon model is a hard error. PERSON NO_WPN is emitted only after the weapon
+model has actually run on a person crop and found no configured weapon class.
+
+Person-only camera tests skip the weapon model entirely and never emit
+PERSON NO_WPN.
 """
 
 from __future__ import annotations
 
 import logging
+import os
+import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 logger = logging.getLogger(__name__)
 
-# xyxy boxes are [x1, y1, x2, y2]
+PROJECT_ROOT = Path(__file__).resolve().parent
+DEFAULT_WEAPON_MODEL = "models/best.pt"
+PERSON_CLASS_NAMES = frozenset({"person", "people", "human"})
 Box = Sequence[float]
+
+
+class WeaponModelError(Exception):
+    """Full detection cannot start or continue without a valid weapon model."""
+
+
+class PersonModelError(Exception):
+    """Person detector failed to load."""
+
+
+def weapon_model_missing_message(path: str = DEFAULT_WEAPON_MODEL) -> str:
+    return (
+        "ERROR: Weapon detection is required but models/best.pt was not found.\n"
+        "\n"
+        "Please place the trained YOLOv5 weapon model at:\n"
+        "\n"
+        f"{path}\n"
+    )
+
+
+def inspect_class_names(names) -> Dict[int, str]:
+    """Normalize a YOLOv5 names dict/list to {id: lowercase name}."""
+    if names is None:
+        return {}
+    if isinstance(names, dict):
+        return {int(key): str(value).strip().lower() for key, value in names.items()}
+    return {index: str(value).strip().lower() for index, value in enumerate(names)}
+
+
+def resolve_weapon_class_ids(
+    name_map: Dict[int, str], configured: Optional[Sequence[str]] = None
+) -> Tuple[List[int], List[str]]:
+    """
+    Choose weapon class ids from the model's real names.
+
+    Empty configured list: use every non-person class (single-class models
+    such as {0: weapon} work automatically).
+    Explicit WEAPON_CLASSES: every listed name must exist; person is never
+    treated as a weapon.
+    """
+    if not name_map:
+        raise WeaponModelError(
+            "ERROR: Weapon model has no class names. "
+            "The file is not a usable YOLOv5 detection model."
+        )
+
+    configured_list = [str(name).strip().lower() for name in (configured or []) if str(name).strip()]
+    model_names = [name_map[key] for key in sorted(name_map)]
+
+    if configured_list:
+        if any(name in PERSON_CLASS_NAMES for name in configured_list):
+            raise WeaponModelError(
+                "ERROR: WEAPON_CLASSES must not include a person class. "
+                f"Configured={configured_list} model={model_names}"
+            )
+        missing = [name for name in configured_list if name not in model_names]
+        if missing:
+            raise WeaponModelError(
+                "ERROR: Configured weapon class(es) were not found in the model.\n"
+                f"Missing: {missing}\n"
+                f"Model classes: {model_names}\n"
+                "Set WEAPON_CLASSES to names that exist in models/best.pt."
+            )
+        selected = configured_list
+    else:
+        selected = [name for name in model_names if name not in PERSON_CLASS_NAMES]
+        if not selected:
+            raise WeaponModelError(
+                "ERROR: Weapon model has no non-person classes.\n"
+                f"Model classes: {model_names}\n"
+                "This file cannot be used as a weapon detector."
+            )
+
+    class_ids = [idx for idx, name in name_map.items() if name in selected]
+    if not class_ids:
+        raise WeaponModelError(
+            "ERROR: No weapon class ids resolved from the model.\n"
+            f"Model classes: {model_names}"
+        )
+    return class_ids, [name_map[idx] for idx in class_ids]
+
+
+def parse_yolov5_predictions(
+    rows: Iterable,
+    confidence_threshold: float,
+    allowed_class_ids: Optional[Sequence[int]] = None,
+) -> List[Dict]:
+    """Parse YOLOv5 rows of [x1, y1, x2, y2, conf, cls]."""
+    allowed = None if allowed_class_ids is None else set(int(v) for v in allowed_class_ids)
+    detections: List[Dict] = []
+    for row in rows:
+        try:
+            values = list(row)
+        except TypeError:
+            continue
+        if len(values) < 6:
+            continue
+        try:
+            x1, y1, x2, y2, conf, cls = values[:6]
+            conf = float(conf)
+            cls = int(float(cls))
+        except (TypeError, ValueError):
+            continue
+        if conf < confidence_threshold:
+            continue
+        if allowed is not None and cls not in allowed:
+            continue
+        detections.append(
+            {
+                "bbox": [float(x1), float(y1), float(x2), float(y2)],
+                "confidence": conf,
+                "class_id": cls,
+            }
+        )
+    return detections
+
+
+def _load_yolov5(weights_or_name: str):
+    """
+    Load a YOLOv5 hub model once. Isolates torch.hub from this project on sys.path
+    so the hub 'utils' package cannot collide with a local package.
+    """
+    import torch
+
+    saved_path = sys.path[:]
+    saved_modules = {
+        key: sys.modules[key]
+        for key in list(sys.modules)
+        if key == "utils" or key.startswith("utils.")
+    }
+    project_root = str(PROJECT_ROOT.resolve())
+    for key in saved_modules:
+        sys.modules.pop(key, None)
+    sys.path = [
+        item
+        for item in sys.path
+        if os.path.abspath(item) != os.path.abspath(project_root)
+    ]
+    try:
+        path = Path(weights_or_name)
+        if path.is_file():
+            model = torch.hub.load(
+                "ultralytics/yolov5",
+                "custom",
+                path=str(path),
+                source="github",
+                trust_repo=True,
+                verbose=False,
+            )
+        else:
+            model = torch.hub.load(
+                "ultralytics/yolov5",
+                weights_or_name,
+                source="github",
+                trust_repo=True,
+                verbose=False,
+            )
+        if hasattr(model, "to"):
+            model.to("cpu")
+        if hasattr(model, "eval"):
+            model.eval()
+        if hasattr(model, "fuse"):
+            try:
+                model.fuse()
+            except Exception:
+                pass
+        return model
+    finally:
+        sys.path = saved_path
+        for key, module in saved_modules.items():
+            sys.modules.setdefault(key, module)
+
+
+def _yolov5_xyxy(results) -> List:
+    if results is None:
+        return []
+    if hasattr(results, "xyxy") and results.xyxy:
+        tensor = results.xyxy[0]
+    elif hasattr(results, "pred") and results.pred:
+        tensor = results.pred[0]
+    else:
+        return []
+    if tensor is None:
+        return []
+    if hasattr(tensor, "detach"):
+        tensor = tensor.detach().cpu().numpy()
+    return tensor
 
 
 def box_iou(a: Box, b: Box) -> float:
@@ -42,10 +236,10 @@ def expand_box(
     box: Box, ratio: float, frame_w: int, frame_h: int
 ) -> Tuple[float, float, float, float]:
     x1, y1, x2, y2 = box
-    w = x2 - x1
-    h = y2 - y1
-    dx = w * ratio
-    dy = h * ratio
+    width = x2 - x1
+    height = y2 - y1
+    dx = width * ratio
+    dy = height * ratio
     return (
         max(0.0, x1 - dx),
         max(0.0, y1 - dy),
@@ -89,7 +283,7 @@ def classify_persons_and_weapons(
     Attach weapons to persons and return the frame-level event state.
 
     A weapon outside every person region is drawn locally but does not create
-    PERSON WPN. A frame with no person never becomes WPN.
+    PERSON WPN. A frame with no person never becomes WPN or NO_WPN.
     """
     labeled_persons: List[Dict] = []
     any_armed = False
@@ -167,57 +361,80 @@ def draw_detections(
 
 
 class PersonDetector:
-    """Lightweight person detector. Model is loaded once."""
+    """Lightweight YOLOv5n person detector. Loaded once."""
 
     def __init__(
         self,
-        backend: str = "yolo",
-        model_path: str = "models/yolov8n.pt",
+        backend: str = "yolov5",
+        model_path: str = "models/yolov5n.pt",
         confidence: float = 0.45,
         infer_size: int = 320,
     ):
         self.backend = backend.lower()
+        if self.backend == "yolo":
+            self.backend = "yolov5"
         self.model_path = model_path
         self.confidence = confidence
         self.infer_size = infer_size
         self.model_name = self.backend
-        self._yolo = None
+        self.class_names: Dict[int, str] = {}
+        self.person_class_ids: List[int] = [0]
+        self._model = None
         self._hog = None
         self._load()
 
     def _load(self) -> None:
-        import cv2
-
         if self.backend == "hog":
+            import cv2
+
             hog = cv2.HOGDescriptor()
             hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
             self._hog = hog
             self.model_name = "opencv-hog"
-            logger.info("Person detector: OpenCV HOG (no neural-net weights)")
+            logger.info("Person detector: OpenCV HOG")
             return
 
-        if self.backend != "yolo":
-            raise ValueError(f"Unknown detection backend: {self.backend}")
-
-        from ultralytics import YOLO
+        if self.backend != "yolov5":
+            raise PersonModelError(f"Unknown person detection backend: {self.backend}")
 
         path = Path(self.model_path)
-        load_target = str(path) if path.is_file() else "yolov8n.pt"
-        if load_target == "yolov8n.pt" and not path.is_file():
+        load_target = str(path) if path.is_file() else "yolov5n"
+        if not path.is_file():
             logger.warning(
-                "Person model %s not found; ultralytics will fetch yolov8n.pt (~6MB)",
+                "Person weights %s not found; loading YOLOv5n via torch.hub",
                 self.model_path,
             )
-        Path("models").mkdir(exist_ok=True)
-        self._yolo = YOLO(load_target)
-        self.model_name = Path(load_target).name
-        logger.info("Person detector: YOLO %s imgsz=%s", self.model_name, self.infer_size)
+        try:
+            self._model = _load_yolov5(load_target)
+        except Exception as exc:
+            raise PersonModelError(
+                "ERROR: Failed to load the YOLOv5 person model.\n"
+                f"Tried: {load_target}\n"
+                "Place official YOLOv5n weights at models/yolov5n.pt\n"
+                f"Detail: {exc}"
+            ) from exc
+
+        self._model.conf = self.confidence
+        self.class_names = inspect_class_names(getattr(self._model, "names", {0: "person"}))
+        person_ids = [
+            idx for idx, name in self.class_names.items() if name in PERSON_CLASS_NAMES
+        ]
+        self.person_class_ids = person_ids or [0]
+        self._model.classes = self.person_class_ids
+        self._model.max_det = 10
+        self.model_name = Path(load_target).name if path.is_file() else "yolov5n"
+        logger.info(
+            "Person detector: YOLOv5 %s imgsz=%s classes=%s",
+            self.model_name,
+            self.infer_size,
+            [self.class_names.get(i, str(i)) for i in self.person_class_ids],
+        )
 
     def detect(self, frame) -> List[Dict]:
         try:
             if self._hog is not None:
                 return self._detect_hog(frame)
-            return self._detect_yolo(frame)
+            return self._detect_yolov5(frame)
         except Exception as exc:
             logger.warning("Person inference failed: %s", exc)
             return []
@@ -241,158 +458,163 @@ class PersonDetector:
                 {
                     "bbox": [float(x), float(y), float(x + w), float(y + h)],
                     "confidence": conf,
+                    "class_id": 0,
                 }
             )
         return persons
 
-    def _detect_yolo(self, frame) -> List[Dict]:
-        results = self._yolo.predict(
-            frame,
-            imgsz=self.infer_size,
-            conf=self.confidence,
-            classes=[0],
-            verbose=False,
-            device="cpu",
-            max_det=10,
+    def _detect_yolov5(self, frame) -> List[Dict]:
+        import torch
+
+        with torch.inference_mode():
+            results = self._model(frame, size=self.infer_size)
+        return parse_yolov5_predictions(
+            _yolov5_xyxy(results),
+            self.confidence,
+            allowed_class_ids=self.person_class_ids,
         )
-        persons = []
-        if not results:
-            return persons
-        boxes = getattr(results[0], "boxes", None)
-        if boxes is None:
-            return persons
-        xyxy = boxes.xyxy.cpu().numpy()
-        confs = boxes.conf.cpu().numpy()
-        for bbox, conf in zip(xyxy, confs):
-            persons.append(
-                {
-                    "bbox": [float(v) for v in bbox],
-                    "confidence": float(conf),
-                }
-            )
-        return persons
 
 
 class WeaponDetector:
     """
-    Optional weapon model.
+    Required YOLOv5 weapon detector for full detection mode.
 
-    Disabled when no file exists. This class never invents a weapon class from
-    a COCO person model.
+    Loads models/best.pt once. Never invents COCO classes as weapons.
+    Never reports PERSON NO_WPN just because the file is missing.
     """
 
     def __init__(
         self,
-        model_path: str = "",
+        model_path: str = DEFAULT_WEAPON_MODEL,
         class_names: Optional[List[str]] = None,
         confidence: float = 0.40,
-        infer_size: int = 320,
+        infer_size: int = 256,
+        required: bool = True,
     ):
-        self.model_path = (model_path or "").strip()
-        self.class_names = [name.lower() for name in (class_names or [])]
+        self.model_path = (model_path or DEFAULT_WEAPON_MODEL).strip()
+        self.configured_class_names = [name.lower() for name in (class_names or [])]
         self.confidence = confidence
         self.infer_size = infer_size
+        self.required = required
         self.enabled = False
-        self.model_name = "disabled"
-        self._yolo = None
-        self._class_ids: Optional[List[int]] = None
-        self._load()
+        self.model_name = "not-loaded"
+        self.model_class_names: List[str] = []
+        self.selected_class_names: List[str] = []
+        self._class_ids: List[int] = []
+        self._model = None
+        if required:
+            self._load_required()
 
-    def _load(self) -> None:
-        if not self.model_path:
-            logger.info("Weapon detector: disabled (WEAPON_MODEL not set)")
-            return
+    def _load_required(self) -> None:
         path = Path(self.model_path)
         if not path.is_file():
-            logger.warning(
-                "Weapon detector: disabled (file not found: %s). "
-                "PERSON WPN will not be emitted.",
-                self.model_path,
+            raise WeaponModelError(weapon_model_missing_message(self.model_path))
+
+        try:
+            self._model = _load_yolov5(str(path))
+        except WeaponModelError:
+            raise
+        except Exception as exc:
+            raise WeaponModelError(
+                "ERROR: Failed to load the YOLOv5 weapon model.\n"
+                f"Path: {path}\n"
+                "The file must be a trained YOLOv5 weapon-detection weight "
+                "(not stock COCO YOLOv5, not YOLOv8).\n"
+                f"Detail: {exc}"
+            ) from exc
+
+        name_map = inspect_class_names(getattr(self._model, "names", None))
+        if not name_map:
+            raise WeaponModelError(
+                "ERROR: Weapon model has no class names.\n"
+                f"Path: {path}"
             )
-            return
-        from ultralytics import YOLO
+        self.model_class_names = [name_map[key] for key in sorted(name_map)]
+        self._class_ids, self.selected_class_names = resolve_weapon_class_ids(
+            name_map, self.configured_class_names
+        )
+        self._model.conf = self.confidence
+        self._model.classes = self._class_ids
+        self._model.max_det = 5
 
-        self._yolo = YOLO(str(path))
-        names = self._yolo.names if hasattr(self._yolo, "names") else {}
-        if isinstance(names, dict):
-            name_map = {int(k): str(v).lower() for k, v in names.items()}
-        else:
-            name_map = {i: str(v).lower() for i, v in enumerate(names)}
-
-        if self.class_names:
-            self._class_ids = [
-                idx for idx, name in name_map.items() if name in self.class_names
-            ]
-            if not self._class_ids:
-                logger.warning(
-                    "Weapon model %s has no classes in %s (model classes: %s). "
-                    "Weapon detector disabled.",
-                    path.name,
-                    self.class_names,
-                    list(name_map.values()),
-                )
-                self._yolo = None
-                return
-        else:
-            self._class_ids = None
+        try:
+            self._warmup()
+        except Exception as exc:
+            raise WeaponModelError(
+                "ERROR: Weapon model loaded but test inference failed.\n"
+                f"Path: {path}\n"
+                f"Detail: {exc}"
+            ) from exc
 
         self.enabled = True
         self.model_name = path.name
-        logger.info(
-            "Weapon detector: %s classes=%s",
-            self.model_name,
-            [name_map[i] for i in (self._class_ids or name_map.keys())],
-        )
+        print("Weapon model:")
+        print(f"Path: {path}")
+        print(f"Classes: {self.model_class_names}")
+        print("Weapon model loaded:")
+        print(str(path))
+        print("Weapon classes:")
+        print(str(self.model_class_names))
+        print("Configured weapon classes:")
+        print(str(self.selected_class_names))
 
-    def detect_in_region(self, frame, person_box: Box) -> List[Dict]:
-        if not self.enabled or self._yolo is None:
-            return []
-        h, w = frame.shape[:2]
-        x1, y1, x2, y2 = [int(v) for v in expand_box(person_box, 0.15, w, h)]
+    def _warmup(self) -> None:
+        import numpy as np
+        import torch
+
+        dummy = np.zeros((self.infer_size, self.infer_size, 3), dtype=np.uint8)
+        with torch.inference_mode():
+            self._model(dummy, size=self.infer_size)
+
+    def detect_in_region(self, frame, person_box: Box) -> Tuple[List[Dict], bool]:
+        """
+        Run YOLOv5 on one expanded person crop.
+
+        Returns (detections, inference_ok). inference_ok is False only when
+        the model raised; a clean empty result is a real NO_WPN for that crop.
+        """
+        if not self.enabled or self._model is None:
+            return [], False
+        height, width = frame.shape[:2]
+        x1, y1, x2, y2 = [int(v) for v in expand_box(person_box, 0.15, width, height)]
         x1, y1 = max(0, x1), max(0, y1)
-        x2, y2 = min(w, x2), min(h, y2)
+        x2, y2 = min(width, x2), min(height, y2)
         if x2 - x1 < 8 or y2 - y1 < 8:
-            return []
+            return [], True
         crop = frame[y1:y2, x1:x2]
         try:
-            results = self._yolo.predict(
-                crop,
-                imgsz=self.infer_size,
-                conf=self.confidence,
-                classes=self._class_ids,
-                verbose=False,
-                device="cpu",
-                max_det=5,
-            )
+            import torch
+
+            with torch.inference_mode():
+                results = self._model(crop, size=self.infer_size)
         except Exception as exc:
             logger.warning("Weapon inference failed: %s", exc)
-            return []
+            return [], False
 
         found: List[Dict] = []
-        if not results:
-            return found
-        boxes = getattr(results[0], "boxes", None)
-        if boxes is None:
-            return found
-        xyxy = boxes.xyxy.cpu().numpy()
-        confs = boxes.conf.cpu().numpy()
-        for bbox, conf in zip(xyxy, confs):
+        for item in parse_yolov5_predictions(
+            _yolov5_xyxy(results),
+            self.confidence,
+            allowed_class_ids=self._class_ids,
+        ):
+            box = item["bbox"]
             found.append(
                 {
                     "bbox": [
-                        float(bbox[0] + x1),
-                        float(bbox[1] + y1),
-                        float(bbox[2] + x1),
-                        float(bbox[3] + y1),
+                        float(box[0] + x1),
+                        float(box[1] + y1),
+                        float(box[2] + x1),
+                        float(box[3] + y1),
                     ],
-                    "confidence": float(conf),
+                    "confidence": item["confidence"],
+                    "class_id": item["class_id"],
                 }
             )
-        return found
+        return found, True
 
 
 class FrameClassifier:
-    """Run person detection, then optional per-person weapon classification."""
+    """Person boxes, then required per-person YOLOv5 weapon crops."""
 
     def __init__(
         self,
@@ -411,23 +633,37 @@ class FrameClassifier:
         if not persons:
             return None, [], []
 
-        weapons: List[Dict] = []
-        use_weapon = (
-            not self.person_only
-            and self.weapon_detector is not None
-            and self.weapon_detector.enabled
-        )
-        if use_weapon:
-            for person in persons:
-                weapons.extend(
-                    self.weapon_detector.detect_in_region(frame, person["bbox"])
-                )
+        if self.person_only:
+            labeled = [
+                {**person, "label": "PERSON", "armed": False} for person in persons
+            ]
+            return None, labeled, []
 
-        h, w = frame.shape[:2]
-        return classify_persons_and_weapons(
+        if self.weapon_detector is None or not self.weapon_detector.enabled:
+            raise WeaponModelError(
+                "ERROR: Weapon detection is required but the YOLOv5 weapon "
+                "model is not loaded. Refusing PERSON NO_WPN.\n\n"
+                "Please place the trained YOLOv5 weapon model at:\n\n"
+                "models/best.pt\n"
+            )
+
+        weapons: List[Dict] = []
+        ran_ok = True
+        for person in persons:
+            found, ok = self.weapon_detector.detect_in_region(frame, person["bbox"])
+            if not ok:
+                ran_ok = False
+            weapons.extend(found)
+
+        height, width = frame.shape[:2]
+        state, labeled, weapons = classify_persons_and_weapons(
             persons,
             weapons,
-            w,
-            h,
+            width,
+            height,
             expand_ratio=self.expand_ratio,
         )
+        # A failed weapon inference must not become a false NO_WPN.
+        if state == "NO_WPN" and not ran_ok:
+            return None, labeled, weapons
+        return state, labeled, weapons
