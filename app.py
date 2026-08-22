@@ -25,6 +25,7 @@ from detector import (
     WeaponDetector,
     WeaponModelError,
     cuda_torch_arm_warning,
+    display_overlay_label,
     draw_detections,
 )
 from event_manager import EventManager
@@ -301,6 +302,7 @@ class DetectionApp:
         monitor = ResourceMonitor()
         persons: list = []
         weapons: list = []
+        others: list = []
         infer_count = 0
         last_preview = None
 
@@ -313,21 +315,24 @@ class DetectionApp:
             now = time.monotonic()
             if min_interval and (now - last_infer) < min_interval:
                 if self.cfg.enable_display:
-                    self._show(frame, persons, weapons, last_label, monitor.last_fps)
+                    self._show(
+                        frame, persons, weapons, last_label, monitor.last_fps, others
+                    )
                 del frame
                 continue
 
             last_infer = now
             try:
-                state, persons, weapons = self.classifier.infer(frame)
+                state, persons, weapons, others = self.classifier.infer(frame)
             except WeaponModelError as exc:
                 print(str(exc), file=sys.stderr)
                 break
             except Exception as exc:
                 logger.warning("Inference error: %s", exc)
-                state, persons, weapons = None, [], []
+                state, persons, weapons, others = None, [], [], []
             monitor.mark_inference()
 
+            last_label = display_overlay_label(state, persons)
             emit_state = None
             if not self.cfg.person_only:
                 emit_state = self.events.update(state, now=now)
@@ -339,22 +344,15 @@ class DetectionApp:
                     message = None
                 if message:
                     print(message)
-                    last_label = message
                     if self.uart is not None:
                         self.uart.send_message(message)
-            elif self.cfg.person_only:
-                last_label = "PERSON" if persons else "NO PERSON EVENT"
-            elif state is None:
-                last_label = "NO PERSON EVENT"
-            elif state == "WPN":
-                last_label = "PERSON WPN"
-            else:
-                last_label = "PERSON NO_WPN"
 
             infer_count += 1
             monitor.maybe_report(now)
             if self.cfg.enable_display or self.cfg.save_preview:
-                last_preview = draw_detections(frame, persons, weapons, last_label)
+                last_preview = draw_detections(
+                    frame, persons, weapons, last_label, others=others
+                )
             if self.cfg.enable_display and last_preview is not None:
                 self._show_array(last_preview, monitor.last_fps)
             if self.cfg.max_frames > 0 and infer_count >= self.cfg.max_frames:
@@ -374,8 +372,12 @@ class DetectionApp:
 
         self.shutdown()
 
-    def _show(self, frame, persons, weapons, last_label: str, fps: float) -> None:
-        display = draw_detections(frame, persons, weapons, last_label)
+    def _show(
+        self, frame, persons, weapons, last_label: str, fps: float, others=None
+    ) -> None:
+        display = draw_detections(
+            frame, persons, weapons, last_label, others=others or []
+        )
         self._show_array(display, fps)
 
     def _show_array(self, display, fps: float) -> None:

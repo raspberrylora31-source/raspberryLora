@@ -691,7 +691,9 @@ def classify_persons_and_weapons(
                 expand_ratio=expand_ratio,
             ):
                 armed = True
-        label = "PERSON WPN" if armed else "PERSON NO_WPN"
+        # Preview boxes look like a normal model: PERSON, or PERSON WPN
+        # when a weapon is associated. UART still uses WPN / NO_WPN.
+        label = "PERSON WPN" if armed else "PERSON"
         any_armed = any_armed or armed
         labeled_persons.append({**person, "label": label, "armed": armed})
 
@@ -700,44 +702,54 @@ def classify_persons_and_weapons(
     return ("WPN" if any_armed else "NO_WPN"), labeled_persons, weapons
 
 
+def display_overlay_label(state: Optional[str], persons: Sequence[Dict]) -> str:
+    """Local preview banner. Mesh text is still PERSON WPN / PERSON NO_WPN."""
+    if state == "WPN":
+        return "PERSON WPN"
+    if persons:
+        return "PERSON"
+    return "NO PERSON EVENT"
+
+
+def _draw_box(out, box: Box, label: str, color) -> None:
+    import cv2
+
+    x1, y1, x2, y2 = [int(v) for v in box]
+    cv2.rectangle(out, (x1, y1), (x2, y2), color, 2)
+    cv2.putText(
+        out,
+        label,
+        (x1, max(20, y1 - 8)),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.6,
+        color,
+        2,
+    )
+
+
 def draw_detections(
     frame,
     labeled_persons: List[Dict],
     weapons: List[Dict],
     overlay_text: str = "",
+    others: Optional[List[Dict]] = None,
 ):
-    """Draw person/weapon boxes. Display-only; does not change LoRa text."""
+    """Draw person / weapon / other-object boxes. Display-only."""
     import cv2
 
     out = frame
     for person in labeled_persons:
-        x1, y1, x2, y2 = [int(v) for v in person["bbox"]]
         armed = person.get("armed", False)
         color = (0, 0, 255) if armed else (0, 200, 0)
-        label = person.get("label", "PERSON")
-        cv2.rectangle(out, (x1, y1), (x2, y2), color, 2)
-        cv2.putText(
-            out,
-            label,
-            (x1, max(20, y1 - 8)),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.6,
-            color,
-            2,
-        )
+        _draw_box(out, person["bbox"], person.get("label", "PERSON"), color)
 
     for weapon in weapons:
-        x1, y1, x2, y2 = [int(v) for v in weapon["bbox"]]
-        cv2.rectangle(out, (x1, y1), (x2, y2), (0, 140, 255), 2)
-        cv2.putText(
-            out,
-            "WPN",
-            (x1, max(20, y1 - 8)),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.6,
-            (0, 140, 255),
-            2,
-        )
+        name = str(weapon.get("class_name") or weapon.get("label") or "WPN")
+        _draw_box(out, weapon["bbox"], name.upper(), (0, 140, 255))
+
+    for obj in others or []:
+        name = str(obj.get("class_name") or obj.get("label") or "object")
+        _draw_box(out, obj["bbox"], name, (255, 180, 0))
 
     if overlay_text:
         cv2.putText(
@@ -829,8 +841,8 @@ class PersonDetector:
         self.person_class_ids = person_ids or [0]
         if self._runtime == "hub":
             self._model.conf = self.confidence
-            self._model.classes = self.person_class_ids
-            self._model.max_det = 10
+            self._model.classes = None
+            self._model.max_det = 20
         self.model_name = weights.name
         self.runtime = self._runtime
         logger.info(
@@ -842,13 +854,28 @@ class PersonDetector:
         )
 
     def detect(self, frame) -> List[Dict]:
+        persons, _others = self.detect_scene(frame)
+        return persons
+
+    def detect_scene(self, frame) -> Tuple[List[Dict], List[Dict]]:
+        """Persons for events, plus other scene classes for display only."""
         try:
             if self._hog is not None:
-                return self._detect_hog(frame)
-            return self._detect_yolov5(frame)
+                return self._detect_hog(frame), []
+            rows = self._detect_yolov5(frame)
         except Exception as exc:
             logger.warning("Person inference failed: %s", exc)
-            return []
+            return [], []
+        persons: List[Dict] = []
+        others: List[Dict] = []
+        for item in rows:
+            name = self.class_names.get(item["class_id"], str(item["class_id"]))
+            labeled = {**item, "class_name": name, "label": name}
+            if item["class_id"] in self.person_class_ids or name in PERSON_CLASS_NAMES:
+                persons.append(labeled)
+            else:
+                others.append(labeled)
+        return persons, others
 
     def _detect_hog(self, frame) -> List[Dict]:
         import cv2
@@ -870,6 +897,8 @@ class PersonDetector:
                     "bbox": [float(x), float(y), float(x + w), float(y + h)],
                     "confidence": conf,
                     "class_id": 0,
+                    "class_name": "person",
+                    "label": "person",
                 }
             )
         return persons
@@ -881,16 +910,16 @@ class PersonDetector:
                 frame,
                 self.infer_size,
                 self.confidence,
-                self.person_class_ids,
-                10,
+                None,
+                20,
             )
         return _predict_hub(
             self._model,
             frame,
             self.infer_size,
             self.confidence,
-            self.person_class_ids,
-            10,
+            None,
+            20,
         )
 
 
@@ -919,6 +948,7 @@ class WeaponDetector:
         self.model_name = "not-loaded"
         self.model_class_names: List[str] = []
         self.selected_class_names: List[str] = []
+        self._name_map: Dict[int, str] = {}
         self._class_ids: List[int] = []
         self._model = None
         self._runtime = "none"
@@ -967,6 +997,7 @@ class WeaponDetector:
                 "Weapon model has no class names.\n"
                 f"Path: {path}"
             )
+        self._name_map = name_map
         self.model_class_names = [name_map[key] for key in sorted(name_map)]
         self._class_ids, self.selected_class_names = resolve_weapon_class_ids(
             name_map, self.configured_class_names
@@ -1024,6 +1055,8 @@ class WeaponDetector:
         found: List[Dict] = []
         for item in items:
             box = item["bbox"]
+            class_id = item["class_id"]
+            class_name = self._name_map.get(class_id, "weapon")
             found.append(
                 {
                     "bbox": [
@@ -1033,7 +1066,9 @@ class WeaponDetector:
                         float(box[3] + y1),
                     ],
                     "confidence": item["confidence"],
-                    "class_id": item["class_id"],
+                    "class_id": class_id,
+                    "class_name": class_name,
+                    "label": class_name,
                 }
             )
         return found, True
@@ -1073,16 +1108,18 @@ class FrameClassifier:
         self.expand_ratio = expand_ratio
         self.person_only = person_only
 
-    def infer(self, frame) -> Tuple[Optional[str], List[Dict], List[Dict]]:
-        persons = self.person_detector.detect(frame)
+    def infer(
+        self, frame
+    ) -> Tuple[Optional[str], List[Dict], List[Dict], List[Dict]]:
+        persons, others = self.person_detector.detect_scene(frame)
         if not persons:
-            return None, [], []
+            return None, [], [], others
 
         if self.person_only:
             labeled = [
                 {**person, "label": "PERSON", "armed": False} for person in persons
             ]
-            return None, labeled, []
+            return None, labeled, [], others
 
         if self.weapon_detector is None or not self.weapon_detector.enabled:
             raise WeaponModelError(
@@ -1109,5 +1146,5 @@ class FrameClassifier:
         )
         # A failed weapon inference must not become a false NO_WPN.
         if state == "NO_WPN" and not ran_ok:
-            return None, labeled, weapons
-        return state, labeled, weapons
+            return None, labeled, weapons, others
+        return state, labeled, weapons, others

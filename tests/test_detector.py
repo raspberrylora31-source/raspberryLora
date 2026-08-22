@@ -9,6 +9,7 @@ from detector import (
     _sys_path_without_project_shadows,
     classify_persons_and_weapons,
     cuda_torch_arm_warning,
+    display_overlay_label,
     parse_yolov5_predictions,
     resolve_weapon_class_ids,
     WeaponModelError,
@@ -26,7 +27,7 @@ class AssociationTests(unittest.TestCase):
         persons = [{"bbox": [100, 50, 200, 300], "confidence": 0.8}]
         state, labeled, _ = classify_persons_and_weapons(persons, [], 640, 360)
         self.assertEqual(state, "NO_WPN")
-        self.assertEqual(labeled[0]["label"], "PERSON NO_WPN")
+        self.assertEqual(labeled[0]["label"], "PERSON")
 
     def test_weapon_inside_person_region(self):
         persons = [{"bbox": [100, 50, 200, 300], "confidence": 0.8}]
@@ -40,7 +41,7 @@ class AssociationTests(unittest.TestCase):
         weapons = [{"bbox": [500, 20, 540, 60], "confidence": 0.9}]
         state, labeled, _ = classify_persons_and_weapons(persons, weapons, 640, 360)
         self.assertEqual(state, "NO_WPN")
-        self.assertEqual(labeled[0]["label"], "PERSON NO_WPN")
+        self.assertEqual(labeled[0]["label"], "PERSON")
 
     def test_mixed_people_any_wpn_is_event(self):
         persons = [
@@ -51,7 +52,7 @@ class AssociationTests(unittest.TestCase):
         state, labeled, _ = classify_persons_and_weapons(persons, weapons, 640, 360)
         self.assertEqual(state, "WPN")
         self.assertEqual(labeled[0]["label"], "PERSON WPN")
-        self.assertEqual(labeled[1]["label"], "PERSON NO_WPN")
+        self.assertEqual(labeled[1]["label"], "PERSON")
 
 
 class PersonResultParsingTests(unittest.TestCase):
@@ -70,6 +71,25 @@ class PersonResultParsingTests(unittest.TestCase):
         rows = [[1, 2, 3], "bad", [10, 20, 30, 40, 0.8, 0]]
         found = parse_yolov5_predictions(rows, 0.4)
         self.assertEqual(len(found), 1)
+
+    def test_keeps_other_classes_when_unfiltered(self):
+        rows = [
+            [10, 20, 30, 40, 0.9, 0],
+            [50, 60, 80, 90, 0.8, 2],
+        ]
+        found = parse_yolov5_predictions(rows, 0.45)
+        self.assertEqual([row["class_id"] for row in found], [0, 2])
+
+
+class OverlayLabelTests(unittest.TestCase):
+    def test_unarmed_person_is_person_not_no_wpn(self):
+        self.assertEqual(display_overlay_label("NO_WPN", [{"label": "PERSON"}]), "PERSON")
+
+    def test_armed_person_is_person_wpn(self):
+        self.assertEqual(display_overlay_label("WPN", [{"label": "PERSON WPN"}]), "PERSON WPN")
+
+    def test_empty_frame(self):
+        self.assertEqual(display_overlay_label(None, []), "NO PERSON EVENT")
 
 
 class WeaponClassResolutionTests(unittest.TestCase):

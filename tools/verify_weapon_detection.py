@@ -4,7 +4,8 @@ Run the real person + weapon path on still images (no webcam required).
 
 1. Ensures models/best.pt is the public YOLOv5 gun+knife checkpoint
 2. Builds two demo frames (person only, person + weapon crop)
-3. Prints PERSON NO_WPN / PERSON WPN / NO PERSON EVENT
+3. Prints PERSON / PERSON WPN / NO PERSON EVENT on the preview
+   (UART/event state is still PERSON NO_WPN / PERSON WPN)
 """
 
 from __future__ import annotations
@@ -24,6 +25,7 @@ from detector import (  # noqa: E402
     PersonDetector,
     WeaponDetector,
     WeaponModelError,
+    display_overlay_label,
     draw_detections,
     ensure_weapon_weights,
 )
@@ -75,14 +77,9 @@ def _person_with_weapon_frame(person_path: Path, mosaic_path: Path) -> np.ndarra
 
 
 def _run(frame, classifier: FrameClassifier, title: str, out_path: Path) -> str:
-    state, persons, weapons = classifier.infer(frame)
-    if state is None:
-        label = "NO PERSON EVENT"
-    elif state == "WPN":
-        label = "PERSON WPN"
-    else:
-        label = "PERSON NO_WPN"
-    annotated = draw_detections(frame.copy(), persons, weapons, label)
+    state, persons, weapons, others = classifier.infer(frame)
+    label = display_overlay_label(state, persons)
+    annotated = draw_detections(frame.copy(), persons, weapons, label, others=others)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     cv2.imwrite(str(out_path), annotated)
     print(f"{title}: {label}")
@@ -122,7 +119,7 @@ def main() -> int:
         "person with weapon crop",
         out_dir / "person_wpn.jpg",
     )
-    print("Expected: PERSON NO_WPN then PERSON WPN (crop must be detectable).")
+    print("Expected preview: PERSON then PERSON WPN (crop must be detectable).")
     if no_wpn == "NO PERSON EVENT":
         print("Person detector saw no person in the demo photo.", file=sys.stderr)
     return 0

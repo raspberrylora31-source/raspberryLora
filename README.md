@@ -325,8 +325,20 @@ python3 app.py --no-uart --display
 
 Pipeline:
 
-USB webcam → YOLOv5n person box → YOLOv5 gun/knife on **that person
-crop only** → association → boxes → `PERSON WPN` or `PERSON NO_WPN`.
+USB webcam → YOLOv5n scene boxes (person plus other COCO classes) →
+YOLOv5 gun/knife on **each person crop** → association → local boxes
+plus mesh text.
+
+Local preview (normal-model boxes):
+
+| Preview | Meaning |
+|---|---|
+| `PERSON` | Person box. No gun/knife in that crop. |
+| `PERSON WPN` plus `GUN`/`KNIFE` | Person box and a weapon box on the same person |
+| `car`, `chair`, `bottle`, … | Other YOLOv5n classes, labeled with their real names |
+| `NO PERSON EVENT` | No person. Other objects can still be boxed. |
+
+UART/event text is unchanged:
 
 | Overlay / event | Meaning |
 |---|---|
