@@ -1,20 +1,17 @@
-opencv-python==4.8.1.78
-torch==2.0.1
-torchvision==0.15.2
-yolov5==7.0.13
-ultralytics==8.0.226
-pyserial==3.5
-numpy==1.24.3
-Pillow==10.0.0
-scipy==1.11.4
-
-# Optional: WiFi support
-requests==2.31.0
-websocket-client==1.6.4
-
-# Optional: Bluetooth support
-pybluez==0.23
-
-# Optional: Bluetooth Low Energy support
-bleak==0.21.1
-
+opencv-python>=4.8
+numpy>=1.24,<2
+pandas>=2.0
+pyserial>=3.5
+PyYAML>=6.0
+scipy>=1.10
+seaborn>=0.12
+tqdm>=4.64
+# Raspberry Pi 4 (aarch64 / Cortex-A72) cannot run CUDA wheels or current
+# official 2.10+/2.13 wheels (Illegal instruction / ARMv8.1 LSE).
+# After a bad install:  bash tools/fix_pi_torch.sh
+torch==2.3.1; platform_machine == "aarch64"
+torchvision==0.18.1; platform_machine == "aarch64"
+torch; platform_machine != "aarch64"
+torchvision; platform_machine != "aarch64"
+ultralytics>=8.3.0
+gitpython>=3.1.30

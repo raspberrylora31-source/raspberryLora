@@ -1,0 +1,26 @@
+Weapon weights: models/best.pt
+
+These are not stock COCO YOLOv5 and not YOLOv8.
+
+Primary (auto-downloaded):
+  https://raw.githubusercontent.com/zaizou1003/knife_Gun_Detection/main/exp6/weights/best.pt
+  Architecture: YOLOv5s (~14 MB)
+  Classes inspected from the checkpoint: gun, knife
+  Repo: https://github.com/zaizou1003/knife_Gun_Detection
+
+Fallback:
+  https://raw.githubusercontent.com/chunmusic/Gun_Detection/master/runs/train/exp13/weights/best.pt
+  Architecture: YOLOv5s (~14 MB)
+  License: GPL-3.0
+  Repo: https://github.com/chunmusic/Gun_Detection
+
+Install:
+  python3 tools/download_weapon_model.py
+  # or
+  wget -O models/best.pt \
+    https://raw.githubusercontent.com/zaizou1003/knife_Gun_Detection/main/exp6/weights/best.pt
+
+No official Ultralytics weapon checkpoint exists. Community YOLOv8
+firearm models were not used. No public YOLOv5n weapon .pt with a
+stable raw URL was found, so YOLOv5s on person crops (imgsz=256) is
+the lightest reliable option.
