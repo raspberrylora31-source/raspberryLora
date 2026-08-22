@@ -150,10 +150,17 @@ source venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 mkdir -p models
+wget -O models/yolov5n.pt \
+  https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5n.pt
 ```
 
-`requirements.txt` installs OpenCV, NumPy, pyserial, and CPU PyTorch /
-torchvision so YOLOv5 can load `yolov5n.pt` and `best.pt`.
+`requirements.txt` installs OpenCV, NumPy, pyserial, PyTorch, torchvision,
+and `ultralytics` (required by the current YOLOv5 runtime to load
+`yolov5n.pt` and `best.pt`).
+
+A generic `pip install torch` on the Pi may also pull unused NVIDIA
+CUDA wheels. They are not used. Do not install extra CUDA toolkits. The
+Pi runs inference on CPU.
 
 # 8. Model installation
 

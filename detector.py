@@ -21,6 +21,10 @@ logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 DEFAULT_WEAPON_MODEL = "models/best.pt"
+DEFAULT_PERSON_MODEL = "models/yolov5n.pt"
+YOLOV5N_URL = (
+    "https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5n.pt"
+)
 PERSON_CLASS_NAMES = frozenset({"person", "people", "human"})
 Box = Sequence[float]
 
@@ -138,6 +142,48 @@ def parse_yolov5_predictions(
             }
         )
     return detections
+
+
+def ensure_yolov5n_weights(path: str = DEFAULT_PERSON_MODEL) -> Path:
+    """Use local YOLOv5n weights, or fetch the official ~4MB nano file once."""
+    dest = Path(path)
+    if dest.is_file() and dest.stat().st_size > 1_000_000:
+        return dest
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    logger.info("Downloading official YOLOv5n weights to %s", dest)
+    try:
+        import urllib.request
+
+        tmp = dest.with_suffix(".pt.download")
+        urllib.request.urlretrieve(YOLOV5N_URL, tmp)
+        tmp.replace(dest)
+    except Exception as exc:
+        raise PersonModelError(
+            "ERROR: Person weights models/yolov5n.pt were not found and download failed.\n"
+            "On the Pi run:\n"
+            f"  mkdir -p models && wget -O {dest} {YOLOV5N_URL}\n"
+            f"Detail: {exc}"
+        ) from exc
+    if not dest.is_file():
+        raise PersonModelError(
+            f"ERROR: Failed to install YOLOv5n weights at {dest}"
+        )
+    return dest
+
+
+def _load_yolov5_ultralytics(weights_path: str):
+    """Load YOLOv5 `.pt` weights through the ultralytics runtime (CPU)."""
+    try:
+        from ultralytics import YOLO
+    except ImportError as exc:
+        raise PersonModelError(
+            "ERROR: The YOLOv5 runtime needs the ultralytics package.\n"
+            "On the Pi run:\n"
+            "  source venv/bin/activate\n"
+            "  pip install ultralytics\n"
+        ) from exc
+    model = YOLO(str(weights_path))
+    return model
 
 
 def _load_yolov5(weights_or_name: str):
@@ -381,6 +427,7 @@ class PersonDetector:
         self.person_class_ids: List[int] = [0]
         self._model = None
         self._hog = None
+        self._runtime = "hub"
         self._load()
 
     def _load(self) -> None:
@@ -397,35 +444,43 @@ class PersonDetector:
         if self.backend != "yolov5":
             raise PersonModelError(f"Unknown person detection backend: {self.backend}")
 
-        path = Path(self.model_path)
-        load_target = str(path) if path.is_file() else "yolov5n"
-        if not path.is_file():
-            logger.warning(
-                "Person weights %s not found; loading YOLOv5n via torch.hub",
-                self.model_path,
-            )
+        weights = ensure_yolov5n_weights(self.model_path)
+        errors = []
         try:
-            self._model = _load_yolov5(load_target)
-        except Exception as exc:
-            raise PersonModelError(
-                "ERROR: Failed to load the YOLOv5 person model.\n"
-                f"Tried: {load_target}\n"
-                "Place official YOLOv5n weights at models/yolov5n.pt\n"
-                f"Detail: {exc}"
-            ) from exc
+            self._model = _load_yolov5(str(weights))
+            self._runtime = "hub"
+        except Exception as hub_exc:
+            errors.append(f"torch.hub: {hub_exc}")
+            try:
+                self._model = _load_yolov5_ultralytics(str(weights))
+                self._runtime = "ultralytics"
+            except Exception as ultra_exc:
+                errors.append(f"ultralytics: {ultra_exc}")
+                raise PersonModelError(
+                    "ERROR: Failed to load the YOLOv5 person model.\n"
+                    f"Tried: {weights}\n"
+                    "On the Pi run:\n"
+                    "  source venv/bin/activate\n"
+                    "  pip install ultralytics\n"
+                    f"  mkdir -p models && wget -O {weights} {YOLOV5N_URL}\n"
+                    "Detail:\n  " + "\n  ".join(errors)
+                ) from ultra_exc
 
-        self._model.conf = self.confidence
-        self.class_names = inspect_class_names(getattr(self._model, "names", {0: "person"}))
+        names = getattr(self._model, "names", {0: "person"})
+        self.class_names = inspect_class_names(names)
         person_ids = [
             idx for idx, name in self.class_names.items() if name in PERSON_CLASS_NAMES
         ]
         self.person_class_ids = person_ids or [0]
-        self._model.classes = self.person_class_ids
-        self._model.max_det = 10
-        self.model_name = Path(load_target).name if path.is_file() else "yolov5n"
+        if self._runtime == "hub":
+            self._model.conf = self.confidence
+            self._model.classes = self.person_class_ids
+            self._model.max_det = 10
+        self.model_name = weights.name
         logger.info(
-            "Person detector: YOLOv5 %s imgsz=%s classes=%s",
+            "Person detector: YOLOv5n %s runtime=%s imgsz=%s classes=%s",
             self.model_name,
+            self._runtime,
             self.infer_size,
             [self.class_names.get(i, str(i)) for i in self.person_class_ids],
         )
@@ -465,6 +520,31 @@ class PersonDetector:
 
     def _detect_yolov5(self, frame) -> List[Dict]:
         import torch
+
+        if self._runtime == "ultralytics":
+            results = self._model.predict(
+                frame,
+                imgsz=self.infer_size,
+                conf=self.confidence,
+                classes=self.person_class_ids,
+                verbose=False,
+                device="cpu",
+                max_det=10,
+            )
+            if not results:
+                return []
+            boxes = getattr(results[0], "boxes", None)
+            if boxes is None:
+                return []
+            rows = []
+            xyxy = boxes.xyxy.cpu().numpy()
+            confs = boxes.conf.cpu().numpy()
+            clss = boxes.cls.cpu().numpy()
+            for bbox, conf, cls in zip(xyxy, confs, clss):
+                rows.append([*bbox, conf, cls])
+            return parse_yolov5_predictions(
+                rows, self.confidence, allowed_class_ids=self.person_class_ids
+            )
 
         with torch.inference_mode():
             results = self._model(frame, size=self.infer_size)
