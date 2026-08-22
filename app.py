@@ -171,6 +171,22 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--camera", type=int, default=None, help="USB camera index")
     parser.add_argument("--video-file", default=None, help="Video file instead of camera")
+    parser.add_argument(
+        "--image",
+        default=None,
+        help="Still image instead of camera (weapon test without a live webcam)",
+    )
+    parser.add_argument(
+        "--max-frames",
+        type=int,
+        default=None,
+        help="Stop after N inference frames (still-image / video tests)",
+    )
+    parser.add_argument(
+        "--save-preview",
+        default=None,
+        help="Write the last annotated frame to this image path",
+    )
     parser.add_argument("--width", type=int, default=None, help="Capture width")
     parser.add_argument("--height", type=int, default=None, help="Capture height")
     parser.add_argument("--person-infer-size", type=int, default=None)
@@ -281,10 +297,12 @@ class DetectionApp:
             min_interval = 1.0 / self.cfg.target_inference_fps
 
         last_infer = 0.0
-        last_label = "NO PERSON"
+        last_label = "NO PERSON EVENT"
         monitor = ResourceMonitor()
         persons: list = []
         weapons: list = []
+        infer_count = 0
+        last_preview = None
 
         while self.running:
             frame = self.camera.read()
@@ -325,27 +343,55 @@ class DetectionApp:
                     if self.uart is not None:
                         self.uart.send_message(message)
             elif self.cfg.person_only:
-                last_label = "PERSON" if persons else "NO PERSON"
+                last_label = "PERSON" if persons else "NO PERSON EVENT"
             elif state is None:
-                last_label = "NO PERSON"
+                last_label = "NO PERSON EVENT"
             elif state == "WPN":
                 last_label = "PERSON WPN"
             else:
                 last_label = "PERSON NO_WPN"
 
+            infer_count += 1
             monitor.maybe_report(now)
-            if self.cfg.enable_display:
-                self._show(frame, persons, weapons, last_label, monitor.last_fps)
+            if self.cfg.enable_display or self.cfg.save_preview:
+                last_preview = draw_detections(frame, persons, weapons, last_label)
+            if self.cfg.enable_display and last_preview is not None:
+                self._show_array(last_preview, monitor.last_fps)
+            if self.cfg.max_frames > 0 and infer_count >= self.cfg.max_frames:
+                print(last_label)
+                self.running = False
             del frame
+
+        if self.cfg.save_preview and last_preview is not None:
+            try:
+                import cv2
+
+                Path(self.cfg.save_preview).parent.mkdir(parents=True, exist_ok=True)
+                cv2.imwrite(self.cfg.save_preview, last_preview)
+                print(f"Saved preview: {self.cfg.save_preview}")
+            except Exception as exc:
+                logger.warning("Could not save preview: %s", exc)
 
         self.shutdown()
 
     def _show(self, frame, persons, weapons, last_label: str, fps: float) -> None:
+        display = draw_detections(frame, persons, weapons, last_label)
+        self._show_array(display, fps)
+
+    def _show_array(self, display, fps: float) -> None:
         try:
             import cv2
 
-            overlay = last_label if fps <= 0 else f"{last_label}  FPS:{fps:.1f}"
-            display = draw_detections(frame, persons, weapons, overlay)
+            if fps > 0:
+                cv2.putText(
+                    display,
+                    f"FPS:{fps:.1f}",
+                    (12, 54),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.6,
+                    (255, 255, 255),
+                    2,
+                )
             cv2.imshow("Detection", display)
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 self.running = False

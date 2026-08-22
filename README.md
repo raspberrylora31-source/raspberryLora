@@ -199,49 +199,71 @@ python3 app.py --person-only --display --backend hog
 
 # 8. Model installation
 
-Place these files in `models/`:
-
 | File | Role |
 |---|---|
-| `models/yolov5n.pt` | Lightweight YOLOv5n person detector |
-| `models/best.pt` | **Required** trained YOLOv5 weapon model |
+| `models/yolov5n.pt` | Official YOLOv5n person detector (~4 MB) |
+| `models/best.pt` | **Required** YOLOv5 weapon detector |
 
-`models/best.pt` must be **your** trained YOLOv5 weapon-detection
-weights. Do not use stock COCO YOLOv5 and pretend it detects weapons.
-Do not use a YOLOv8 weapon export.
-
-If `models/yolov5n.pt` is missing, the person detector may download
-official YOLOv5n through torch.hub (needs network). Copying
-`models/yolov5n.pt` onto the Pi is the reliable offline method.
-
-If `models/best.pt` is missing, full detection **refuses to start**:
-
-```
-ERROR: Weapon detection is required but models/best.pt was not found.
-
-Please place the trained YOLOv5 weapon model at:
-
-models/best.pt
-```
-
-It will not emit `PERSON NO_WPN` in that situation.
-
-At startup the app prints the model's real class names. Set
-`WEAPON_CLASSES` to names that exist in **that** model.
+## Person model
 
 ```bash
-# Empty = every non-person class in best.pt
-export WEAPON_CLASSES=
-
-# Single-class model {0: weapon}
-export WEAPON_CLASSES=weapon
-
-# Multi-class model {0: person, 1: pistol, 2: rifle}
-export WEAPON_CLASSES=pistol,rifle
+mkdir -p models
+wget -O models/yolov5n.pt \
+  https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5n.pt
 ```
 
-Never list `person` as a weapon class. If the configured names are not
-in the model, full detection exits with an error.
+If that file is missing at startup, the app can download it.
+
+## Weapon model (public YOLOv5, not COCO, not YOLOv8)
+
+There is no official Ultralytics weapon checkpoint. This repo did not
+ship weights. The default file is a public **YOLOv5s** gun+knife model:
+
+- Path: `models/best.pt`
+- Architecture: YOLOv5s (~14 MB) — lightest public YOLOv5 weapon `.pt`
+  with a stable GitHub URL (no YOLOv5n weapon raw URL was found)
+- Classes in the file: `gun`, `knife`
+- Source: https://github.com/zaizou1003/knife_Gun_Detection
+- Direct URL:
+  `https://raw.githubusercontent.com/zaizou1003/knife_Gun_Detection/main/exp6/weights/best.pt`
+
+```bash
+python3 tools/download_weapon_model.py
+# same thing:
+wget -O models/best.pt \
+  https://raw.githubusercontent.com/zaizou1003/knife_Gun_Detection/main/exp6/weights/best.pt
+```
+
+Full mode downloads that file automatically if `models/best.pt` is
+missing. Fallback URL (GPL-3.0 gun model):
+`chunmusic/Gun_Detection` `runs/train/exp13/weights/best.pt`.
+
+Do not use stock COCO YOLOv5 and pretend it detects weapons. Do not use
+a YOLOv8 export. If the file cannot be downloaded or loaded:
+
+```
+ERROR: weapon detection unavailable
+```
+
+That error is **not** converted into `PERSON NO_WPN`.
+
+Startup prints the names that are actually in the checkpoint:
+
+```
+Weapon model loaded: models/best.pt
+Weapon classes: ['gun', 'knife']
+```
+
+Empty `WEAPON_CLASSES` selects every non-person class (`gun`, `knife`
+here). Override only with names that exist in **that** file:
+
+```bash
+export WEAPON_CLASSES=
+# or:
+export WEAPON_CLASSES=gun,knife
+```
+
+Never list `person` as a weapon class.
 
 # 9. CAMERA TEST
 
@@ -288,21 +310,46 @@ ERROR: USB camera could not be opened.
 
 # 10. WEAPON DETECTION TEST
 
-After the camera test works, and after `models/best.pt` is in place:
+Person detection must already work. Then download weights (once) and
+run the **full** path. `--person-only` never loads the weapon model.
 
 ```bash
+python3 tools/download_weapon_model.py
 python3 app.py --no-uart --display
 ```
 
-This verifies:
+Pipeline:
 
-- USB camera
-- person detection
-- YOLOv5 weapon detection on person crops
-- `PERSON WPN` / `PERSON NO_WPN` boxes
-- no LoRa / UART
+USB webcam → YOLOv5n person box → YOLOv5 gun/knife on **that person
+crop only** → association → boxes → `PERSON WPN` or `PERSON NO_WPN`.
 
-This is the main pre-production acceptance test.
+| Overlay / event | Meaning |
+|---|---|
+| `PERSON WPN` | Person + weapon class in that person's crop |
+| `PERSON NO_WPN` | Person + weapon model ran + no gun/knife in the crop |
+| `NO PERSON EVENT` | No person. No mesh event. A lone weapon is not a person event. |
+
+Expected UART/text (after confirmation frames) when a person is present:
+
+```
+PERSON WPN YYYY-MM-DD HH:MM:SS
+PERSON NO_WPN YYYY-MM-DD HH:MM:SS
+```
+
+Still-image / no-webcam check:
+
+```bash
+python3 tools/verify_weapon_detection.py
+python3 app.py --no-uart --no-display --image tests/fixtures/person.jpg --max-frames 3 --save-preview /tmp/preview.jpg
+```
+
+`verify_weapon_detection.py` runs the real models on a person photo and
+on the same photo with a weapon crop pasted on the torso, and writes
+annotated frames under `tests/output/`.
+
+Performance (Pi 4B): camera 640x360, person imgsz 320, weapon crop
+imgsz 256, target 5 FPS, one person model + one weapon model loaded
+once, weapon inference only on person crops.
 
 # 11. UART TEST
 
@@ -393,9 +440,9 @@ wrapper for the same program.
 `ls /dev/video*` then `python3 app.py --person-only --display`.
 If it fails: `ERROR: USB camera could not be opened.`
 
-**Model missing**
-Full mode without `models/best.pt` exits with the required-model error.
-Copy the trained YOLOv5 weapon weights to `models/best.pt`.
+**Weapon model missing / failed**
+The app prints `ERROR: weapon detection unavailable` and exits. Run
+`python3 tools/download_weapon_model.py`. That is not `PERSON NO_WPN`.
 
 **Weapon class missing**
 Startup prints the model's classes. Set `WEAPON_CLASSES` to those names.

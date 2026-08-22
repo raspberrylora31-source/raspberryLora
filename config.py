@@ -67,6 +67,8 @@ class Config:
     enable_display: bool = False
     person_only: bool = False
     no_uart: bool = False
+    max_frames: int = 0
+    save_preview: str = ""
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -98,6 +100,8 @@ class Config:
             enable_display=_env_bool("ENABLE_DISPLAY", False),
             person_only=_env_bool("PERSON_ONLY", False),
             no_uart=_env_bool("NO_UART", False),
+            max_frames=_env_int("MAX_FRAMES", 0),
+            save_preview=_env_str("SAVE_PREVIEW", ""),
         )
 
     def apply_args(self, args) -> None:
@@ -121,6 +125,9 @@ class Config:
             "weapon_confidence": "weapon_confidence_threshold",
             "confirmation_frames": "confirmation_frames",
             "cooldown": "event_cooldown_seconds",
+            "image": "video_file",
+            "max_frames": "max_frames",
+            "save_preview": "save_preview",
         }
         for arg_name, field_name in mapping.items():
             value = getattr(args, arg_name, None)
@@ -141,6 +148,9 @@ class Config:
         # Person-only camera tests never require UART or the T-Beam.
         if self.person_only:
             self.no_uart = True
+        if getattr(args, "image", None) and getattr(args, "max_frames", None) is None:
+            if self.max_frames <= 0:
+                self.max_frames = max(int(self.confirmation_frames), 3)
 
     def weapon_class_list(self) -> list:
         return [

@@ -24,15 +24,21 @@ python3 app.py --person-only --display
 python3 app.py --person-only --no-display
 
 # Person + YOLOv5 weapon, no UART
+python3 tools/download_weapon_model.py
 python3 app.py --no-uart --display
+
+# Still-image weapon check (no webcam)
+python3 tools/verify_weapon_detection.py
+python3 app.py --no-uart --no-display --image tests/fixtures/person.jpg --max-frames 3
 
 # Production: person + weapon + UART
 python3 app.py --display
 python3 app.py --no-display
 ```
 
-Full mode exits if `models/best.pt` is missing. It does not emit
-PERSON NO_WPN in that case.
+If `models/best.pt` is missing, full mode downloads the public YOLOv5s
+gun+knife weights. If download/load fails it prints
+`ERROR: weapon detection unavailable` and does not emit PERSON NO_WPN.
 
 ## Verify without hardware
 

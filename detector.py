@@ -26,7 +26,48 @@ DEFAULT_PERSON_MODEL = "models/yolov5n.pt"
 YOLOV5N_URL = (
     "https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5n.pt"
 )
+# Public YOLOv5 (not v8, not COCO) weapon weights. Inspected classes: gun, knife.
+# Primary is YOLOv5s (~14 MB) from zaizou1003/knife_Gun_Detection (GitHub raw).
+# Fallback is the GPL-3.0 chunmusic/Gun_Detection checkpoint.
+WEAPON_WEIGHT_SOURCES = (
+    {
+        "url": (
+            "https://raw.githubusercontent.com/zaizou1003/"
+            "knife_Gun_Detection/main/exp6/weights/best.pt"
+        ),
+        "label": "YOLOv5s gun+knife (zaizou1003/knife_Gun_Detection)",
+        "classes": ("gun", "knife"),
+    },
+    {
+        "url": (
+            "https://raw.githubusercontent.com/chunmusic/Gun_Detection/"
+            "master/runs/train/exp13/weights/best.pt"
+        ),
+        "label": "YOLOv5s gun (chunmusic/Gun_Detection, GPL-3.0)",
+        "classes": ("gun",),
+    },
+)
+WEAPON_UNAVAILABLE = "ERROR: weapon detection unavailable"
 PERSON_CLASS_NAMES = frozenset({"person", "people", "human"})
+WEAPON_NAME_HINTS = frozenset(
+    {
+        "gun",
+        "guns",
+        "knife",
+        "knives",
+        "pistol",
+        "rifle",
+        "weapon",
+        "weapons",
+        "firearm",
+        "firearms",
+        "handgun",
+        "shotgun",
+        "revolver",
+        "blade",
+    }
+)
+COCO_TELLTALES = frozenset({"bicycle", "car", "dog", "chair", "tv", "toothbrush"})
 Box = Sequence[float]
 
 
@@ -39,12 +80,20 @@ class PersonModelError(Exception):
 
 
 def weapon_model_missing_message(path: str = DEFAULT_WEAPON_MODEL) -> str:
+    primary = WEAPON_WEIGHT_SOURCES[0]["url"]
     return (
-        "ERROR: Weapon detection is required but models/best.pt was not found.\n"
+        f"{WEAPON_UNAVAILABLE}\n"
         "\n"
-        "Please place the trained YOLOv5 weapon model at:\n"
+        "Full detection needs a YOLOv5 weapon-class weight file.\n"
+        f"Expected path: {path}\n"
         "\n"
-        f"{path}\n"
+        "Download the public YOLOv5s gun+knife weights:\n"
+        "  python3 tools/download_weapon_model.py\n"
+        "or:\n"
+        f"  mkdir -p models && wget -O {DEFAULT_WEAPON_MODEL} {primary}\n"
+        "\n"
+        "Do not use stock COCO YOLOv5. Those have no weapon classes.\n"
+        "A missing model is not PERSON NO_WPN.\n"
     )
 
 
@@ -100,6 +149,20 @@ def resolve_weapon_class_ids(
                 f"Model classes: {model_names}\n"
                 "This file cannot be used as a weapon detector."
             )
+
+    if (
+        not configured_list
+        and not any(name in WEAPON_NAME_HINTS for name in model_names)
+        and len(model_names) >= 70
+        and len(set(model_names) & COCO_TELLTALES) >= 3
+    ):
+        raise WeaponModelError(
+            f"{WEAPON_UNAVAILABLE}\n"
+            "This looks like stock COCO YOLOv5, not a weapon model.\n"
+            f"Model classes: {model_names[:12]} ...\n"
+            "Download the gun+knife weights with:\n"
+            "  python3 tools/download_weapon_model.py"
+        )
 
     class_ids = [idx for idx, name in name_map.items() if name in selected]
     if not class_ids:
@@ -170,6 +233,72 @@ def ensure_yolov5n_weights(path: str = DEFAULT_PERSON_MODEL) -> Path:
             f"ERROR: Failed to install YOLOv5n weights at {dest}"
         )
     return dest
+
+
+def _looks_like_yolov5_weights(path: Path) -> bool:
+    if not path.is_file() or path.stat().st_size < 1_000_000:
+        return False
+    try:
+        header = path.read_bytes()[:8]
+    except OSError:
+        return False
+    return header[:2] == b"PK" or header[:1] == b"\x80"
+
+
+def _download_file(url: str, dest: Path) -> None:
+    import urllib.request
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dest.with_suffix(dest.suffix + ".download")
+    logger.info("Downloading %s", url)
+    urllib.request.urlretrieve(url, tmp)
+    tmp.replace(dest)
+
+
+def ensure_weapon_weights(
+    path: str = DEFAULT_WEAPON_MODEL, download: bool = True
+) -> Path:
+    """
+    Return a local YOLOv5 weapon weight file.
+
+    If the default models/best.pt is missing, download the public YOLOv5s
+    gun+knife checkpoint. Custom paths are never silently replaced.
+    """
+    dest = Path(path)
+    if not dest.is_absolute():
+        dest = PROJECT_ROOT / dest
+    if _looks_like_yolov5_weights(dest):
+        return dest
+
+    default_dest = (PROJECT_ROOT / DEFAULT_WEAPON_MODEL).resolve()
+    if dest.resolve() != default_dest or not download:
+        raise WeaponModelError(weapon_model_missing_message(str(dest)))
+
+    errors = []
+    for source in WEAPON_WEIGHT_SOURCES:
+        try:
+            print(f"Downloading weapon model: {source['label']}")
+            print(source["url"])
+            _download_file(source["url"], dest)
+            if _looks_like_yolov5_weights(dest):
+                print(f"Saved {dest} ({dest.stat().st_size} bytes)")
+                return dest
+            errors.append(f"{source['label']}: file was not a YOLOv5 .pt")
+        except Exception as exc:
+            errors.append(f"{source['label']}: {exc}")
+            if dest.exists() and not _looks_like_yolov5_weights(dest):
+                dest.unlink()
+
+    raise WeaponModelError(
+        f"{WEAPON_UNAVAILABLE}\n"
+        "\n"
+        "Could not download a public YOLOv5 weapon model.\n"
+        f"Tried to write: {dest}\n"
+        "Detail:\n  " + "\n  ".join(errors) + "\n"
+        "\n"
+        "Place a YOLOv5 weapon-class .pt at models/best.pt and retry.\n"
+        "Do not use stock COCO weights. A missing model is not PERSON NO_WPN."
+    )
 
 
 PI4_TORCH = "2.3.1"
@@ -758,14 +887,17 @@ class WeaponDetector:
             self._load_required()
 
     def _load_required(self) -> None:
-        path = Path(self.model_path)
-        if not path.is_file():
-            raise WeaponModelError(weapon_model_missing_message(self.model_path))
+        try:
+            path = ensure_weapon_weights(self.model_path, download=True)
+        except WeaponModelError:
+            raise
 
         try:
             raise_if_unsafe_torch()
         except PersonModelError as exc:
-            raise WeaponModelError(str(exc)) from exc
+            raise WeaponModelError(
+                f"{WEAPON_UNAVAILABLE}\n{exc}"
+            ) from exc
 
         errors = []
         try:
@@ -781,7 +913,8 @@ class WeaponDetector:
             except Exception as exc:
                 errors.append(f"torch.hub: {exc}")
                 raise WeaponModelError(
-                    "ERROR: Failed to load the YOLOv5 weapon model.\n"
+                    f"{WEAPON_UNAVAILABLE}\n"
+                    "Failed to load the YOLOv5 weapon model.\n"
                     f"Path: {path}\n"
                     "The file must be a trained YOLOv5 weapon-detection weight "
                     "(not stock COCO YOLOv5, not YOLOv8).\n"
@@ -793,7 +926,8 @@ class WeaponDetector:
         name_map = inspect_class_names(getattr(self._model, "names", None))
         if not name_map:
             raise WeaponModelError(
-                "ERROR: Weapon model has no class names.\n"
+                f"{WEAPON_UNAVAILABLE}\n"
+                "Weapon model has no class names.\n"
                 f"Path: {path}"
             )
         self.model_class_names = [name_map[key] for key in sorted(name_map)]
@@ -809,23 +943,18 @@ class WeaponDetector:
             self._warmup()
         except Exception as exc:
             raise WeaponModelError(
-                "ERROR: Weapon model loaded but test inference failed.\n"
+                f"{WEAPON_UNAVAILABLE}\n"
+                "Weapon model loaded but test inference failed.\n"
                 f"Path: {path}\n"
                 f"Detail: {exc}"
             ) from exc
 
         self.enabled = True
         self.model_name = path.name
-        print("Weapon model:")
-        print(f"Path: {path}")
-        print(f"Classes: {self.model_class_names}")
-        print("Weapon model loaded:")
-        print(str(path))
-        print(f"Runtime: {self._runtime} (fuse skipped)")
-        print("Weapon classes:")
-        print(str(self.model_class_names))
-        print("Configured weapon classes:")
-        print(str(self.selected_class_names))
+        print(f"Weapon model loaded: {path}")
+        print(f"Weapon classes: {self.model_class_names}")
+        print(f"Configured weapon classes: {self.selected_class_names}")
+        print(f"Weapon runtime: {self._runtime} (fuse skipped)")
 
     def _warmup(self) -> None:
         import numpy as np
@@ -920,10 +1049,9 @@ class FrameClassifier:
 
         if self.weapon_detector is None or not self.weapon_detector.enabled:
             raise WeaponModelError(
-                "ERROR: Weapon detection is required but the YOLOv5 weapon "
-                "model is not loaded. Refusing PERSON NO_WPN.\n\n"
-                "Please place the trained YOLOv5 weapon model at:\n\n"
-                "models/best.pt\n"
+                f"{WEAPON_UNAVAILABLE}\n"
+                "The YOLOv5 weapon model is not loaded. "
+                "Refusing PERSON NO_WPN.\n"
             )
 
         weapons: List[Dict] = []
