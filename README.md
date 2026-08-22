@@ -247,6 +247,11 @@ ERROR: weapon detection unavailable
 
 That error is **not** converted into `PERSON NO_WPN`.
 
+`models/best.pt` is a **classic YOLOv5** file (trained with
+`ultralytics/yolov5`, not the newer `ultralytics` YOLOv8 package). The
+app loads it with torch.hub. Ignore the `yolov5nu.pt` / YOLOv8 tip;
+that does not apply to this weapon file.
+
 Startup prints the names that are actually in the checkpoint:
 
 ```
