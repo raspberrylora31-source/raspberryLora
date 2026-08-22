@@ -99,16 +99,34 @@ class WeaponClassResolutionTests(unittest.TestCase):
             resolve_weapon_class_ids({0: "person"}, [])
 
 
-class CudaTorchWarningTests(unittest.TestCase):
-    def test_warns_on_cuda_wheel_on_arm(self):
-        text = cuda_torch_arm_warning("2.13.0+cu130", "aarch64")
+class UnsafeTorchTests(unittest.TestCase):
+    def test_cuda_wheel_on_pi4_is_hard_error(self):
+        text = cuda_torch_arm_warning("2.13.0+cu130", "aarch64", cpuinfo="Features: fp asimd crc32")
         self.assertIsNotNone(text)
+        self.assertTrue(text.startswith("ERROR:"))
         self.assertIn("Illegal instruction", text)
-        self.assertIn("download.pytorch.org/whl/cpu", text)
+        self.assertIn("torch==2.3.1", text)
+        self.assertIn("fix_pi_torch.sh", text)
         self.assertIn("--backend hog", text)
 
-    def test_silent_on_cpu_torch(self):
-        self.assertIsNone(cuda_torch_arm_warning("2.5.1", "aarch64"))
+    def test_new_cpu_wheel_on_pi4_is_hard_error(self):
+        text = cuda_torch_arm_warning("2.13.0+cpu", "aarch64", cpuinfo="Features: fp asimd crc32")
+        self.assertIsNotNone(text)
+        self.assertIn("2.3.1", text)
+
+    def test_silent_on_pi4_safe_cpu_torch(self):
+        self.assertIsNone(
+            cuda_torch_arm_warning("2.3.1", "aarch64", cpuinfo="Features: fp asimd crc32")
+        )
+
+    def test_silent_on_pi5_with_lse(self):
+        self.assertIsNone(
+            cuda_torch_arm_warning(
+                "2.13.0+cpu",
+                "aarch64",
+                cpuinfo="Features: fp asimd crc32 atomics",
+            )
+        )
 
     def test_silent_on_x86_cuda(self):
         self.assertIsNone(cuda_torch_arm_warning("2.13.0+cu130", "x86_64"))

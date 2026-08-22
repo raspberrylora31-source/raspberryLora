@@ -158,38 +158,40 @@ wget -O models/yolov5n.pt \
 torchvision, and `ultralytics` (the current YOLOv5 runtime needs these
 to load `yolov5n.pt` and `best.pt`).
 
-A generic `pip install torch` on the Pi may also pull unused NVIDIA
-CUDA wheels (`torch==2.13.0+cu130` and `nvidia-*` packages). Those are
-not used. Do not install extra CUDA toolkits. The Pi runs inference on
-CPU.
-
-If startup dies like this:
+A generic `pip install torch` or `pip install ultralytics` on the Pi
+often pulls `torch==2.13.0+cu130` plus `nvidia-*` packages. The Pi 4
+has no NVIDIA GPU. That wheel, and current official CPU wheels from
+2.10 onward, use ARMv8.1 LSE atomics. Pi 4 Cortex-A72 is ARMv8.0, so
+the first real tensor op dies with:
 
 ```
-YOLOv5 ... torch-2.13.0+cu130 CPU
-Fusing layers...
 Illegal instruction
 ```
 
-that is the CUDA/aarch64 torch wheel crashing inside YOLOv5 `fuse()`.
-This app now loads YOLOv5 through `ultralytics` and skips layer fusion.
-Still replace the CUDA wheel with a CPU build:
+That is a CPU/ISA crash, not a camera or YOLO-weights problem. Skipping
+`fuse()` is not enough. Install the known-good **CPU** pair:
+
+```
+torch==2.3.1
+torchvision==0.18.1
+```
 
 ```bash
 source venv/bin/activate
-pip uninstall -y torch torchvision
+bash tools/fix_pi_torch.sh
+# or:
+pip uninstall -y torch torchvision torchaudio
 pip freeze | grep -E '^(nvidia-|cuda-)' | cut -d= -f1 | xargs -r pip uninstall -y
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+pip install torch==2.3.1 torchvision==0.18.1
+python3 -c "import torch; print(torch.__version__); print(torch.zeros(1)+1)"
 ```
 
-Then:
+`requirements.txt` already pins those versions on `aarch64`. Do **not**
+install the latest CPU wheel from `download.pytorch.org/whl/cpu` on a
+Pi 4; 2.13+cpu can still SIGILL.
 
-```bash
-git pull origin cursor/meshtastic-uart-detection-53d5
-python3 app.py --person-only --display
-```
-
-To prove the USB camera without PyTorch/YOLO:
+YOLOv5 will not start on an unsafe wheel. It prints an error instead of
+opening the camera and dying. To prove the USB camera without YOLO:
 
 ```bash
 python3 app.py --person-only --display --backend hog

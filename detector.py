@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import logging
 import os
+import platform
 import sys
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
@@ -171,27 +172,121 @@ def ensure_yolov5n_weights(path: str = DEFAULT_PERSON_MODEL) -> Path:
     return dest
 
 
-def cuda_torch_arm_warning(torch_version: str, machine: str) -> Optional[str]:
-    """Warn when a CUDA torch wheel is installed on ARM (common Pi SIGILL cause)."""
-    version = (torch_version or "").lower()
+PI4_TORCH = "2.3.1"
+PI4_TORCHVISION = "0.18.1"
+
+
+def _is_arm_machine(machine: str) -> bool:
     arch = (machine or "").lower()
-    arm = any(token in arch for token in ("aarch64", "armv7", "armv8", "arm64", "arm"))
-    if not arm:
+    return any(token in arch for token in ("aarch64", "armv7", "armv8", "arm64", "arm"))
+
+
+def _is_cuda_torch(torch_version: str) -> bool:
+    version = (torch_version or "").lower()
+    return "+cu" in version or "cuda" in version
+
+
+def parse_torch_version(torch_version: str) -> Tuple[int, int, int]:
+    core = (torch_version or "").split("+", 1)[0].strip()
+    parts = core.split(".")
+    if len(parts) < 2:
+        raise ValueError(torch_version)
+    major = int(parts[0])
+    minor = int(parts[1])
+    patch = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 0
+    return major, minor, patch
+
+
+def cpu_has_arm_lse(cpuinfo: str) -> bool:
+    """True when /proc/cpuinfo advertises ARMv8.1 LSE atomics."""
+    return "atomics" in (cpuinfo or "").lower()
+
+
+def torch_is_pi4_safe(torch_version: str) -> bool:
+    """Pi 4 Cortex-A72 is ARMv8.0. Official wheels from 2.4+ often SIGILL (LSE)."""
+    if _is_cuda_torch(torch_version):
+        return False
+    try:
+        major, minor, _patch = parse_torch_version(torch_version)
+    except (TypeError, ValueError):
+        return False
+    return (major, minor) <= (2, 3)
+
+
+def unsafe_torch_message(
+    torch_version: str,
+    machine: str,
+    cpuinfo: Optional[str] = None,
+) -> Optional[str]:
+    """
+    Return a hard-error string when this ARM board cannot run the installed torch.
+
+    Raspberry Pi 4 (no LSE) dies with Illegal instruction on CUDA wheels and on
+    current official 2.10+/2.13 wheels. A warning is not enough: the process
+    is killed by SIGILL on first inference.
+    """
+    if not _is_arm_machine(machine):
         return None
-    if "+cu" not in version and "cuda" not in version:
+    if cpuinfo is None:
+        try:
+            cpuinfo = Path("/proc/cpuinfo").read_text(errors="replace")
+        except Exception:
+            cpuinfo = ""
+    has_lse = cpu_has_arm_lse(cpuinfo)
+    cuda = _is_cuda_torch(torch_version)
+    too_new_for_pi4 = (not has_lse) and (not torch_is_pi4_safe(torch_version))
+    if not cuda and not too_new_for_pi4:
         return None
-    return (
-        "WARNING: PyTorch looks like a CUDA wheel "
-        f"({torch_version}) on ARM ({machine}).\n"
-        "The Pi has no NVIDIA GPU. That wheel can crash with "
-        "Illegal instruction during YOLOv5 layer fusion.\n"
-        "Reinstall CPU torch, then retry:\n"
-        "  source venv/bin/activate\n"
-        "  pip uninstall -y torch torchvision\n"
-        "  pip freeze | grep -E '^(nvidia-|cuda-)' | cut -d= -f1 | xargs -r pip uninstall -y\n"
-        "  pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu\n"
-        "To prove the USB camera without YOLO: python3 app.py --person-only --display --backend hog\n"
+    reason = (
+        f"CUDA wheel {torch_version} on ARM ({machine})"
+        if cuda
+        else f"PyTorch {torch_version} uses ARMv8.1+ instructions this Pi 4 CPU does not have"
     )
+    return (
+        "ERROR: Refusing to start YOLOv5. The installed PyTorch will kill the "
+        "process with Illegal instruction.\n"
+        f"Detail: {reason}.\n"
+        "Raspberry Pi 4 (Cortex-A72) needs a CPU torch build from the 2.3 line, "
+        "not CUDA and not current 2.10+/2.13 wheels.\n"
+        "\n"
+        "On the Pi:\n"
+        "  source venv/bin/activate\n"
+        "  bash tools/fix_pi_torch.sh\n"
+        "\n"
+        "Or by hand:\n"
+        "  pip uninstall -y torch torchvision torchaudio\n"
+        "  pip freeze | grep -E '^(nvidia-|cuda-)' | cut -d= -f1 | xargs -r pip uninstall -y\n"
+        f"  pip install torch=={PI4_TORCH} torchvision=={PI4_TORCHVISION}\n"
+        "  python3 -c \"import torch; print(torch.__version__); print(torch.zeros(1)+1)\"\n"
+        "\n"
+        "Then:\n"
+        "  python3 app.py --person-only --display\n"
+        "\n"
+        "Camera only, no YOLO:\n"
+        "  python3 app.py --person-only --display --backend hog\n"
+    )
+
+
+def cuda_torch_arm_warning(
+    torch_version: str,
+    machine: str,
+    cpuinfo: Optional[str] = None,
+) -> Optional[str]:
+    """Alias used by startup diagnostics; same text as unsafe_torch_message."""
+    return unsafe_torch_message(torch_version, machine, cpuinfo=cpuinfo)
+
+
+def raise_if_unsafe_torch() -> None:
+    """Abort YOLO load before the first inference can SIGILL."""
+    try:
+        import torch
+
+        version = getattr(torch, "__version__", "unknown")
+    except Exception:
+        return
+    message = unsafe_torch_message(version, platform.machine())
+    if message:
+        raise PersonModelError(message)
 
 
 def _disable_ultralytics_fuse() -> None:
@@ -530,6 +625,7 @@ class PersonDetector:
         if self.backend != "yolov5":
             raise PersonModelError(f"Unknown person detection backend: {self.backend}")
 
+        raise_if_unsafe_torch()
         weights = ensure_yolov5n_weights(self.model_path)
         errors = []
         # Prefer ultralytics on the Pi. torch.hub YOLOv5 auto-fuses and can
@@ -665,6 +761,11 @@ class WeaponDetector:
         path = Path(self.model_path)
         if not path.is_file():
             raise WeaponModelError(weapon_model_missing_message(self.model_path))
+
+        try:
+            raise_if_unsafe_torch()
+        except PersonModelError as exc:
+            raise WeaponModelError(str(exc)) from exc
 
         errors = []
         try:
