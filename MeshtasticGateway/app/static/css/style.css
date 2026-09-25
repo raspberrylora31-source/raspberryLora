@@ -1,0 +1,75 @@
+:root {
+  --bg: #0c1117;
+  --panel: #151c26;
+  --panel-2: #1c2533;
+  --line: #2a3648;
+  --text: #e7eef8;
+  --muted: #8b9bb0;
+  --accent: #3dd6c6;
+  --ok: #3ecf8e;
+  --warn: #e6b450;
+  --bad: #ef6b6b;
+  --offline: #6b7788;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 15px/1.45 "Segoe UI", system-ui, sans-serif; }
+a { color: var(--accent); text-decoration: none; }
+.shell { display: grid; grid-template-columns: 240px 1fr; min-height: 100%; }
+.sidebar { background: #0a0f15; border-right: 1px solid var(--line); padding: 1.2rem 0.9rem; display: flex; flex-direction: column; gap: 1.2rem; }
+.brand { display: flex; gap: 0.7rem; align-items: center; }
+.brand-mark { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, #1aa89a, #3dd6c6); color: #04221e; font-weight: 800; display: grid; place-items: center; }
+.brand-title { font-weight: 700; letter-spacing: 0.04em; }
+.brand-sub { color: var(--muted); font-size: 0.8rem; }
+.sidebar nav { display: flex; flex-direction: column; gap: 0.2rem; }
+.sidebar nav a { padding: 0.55rem 0.7rem; border-radius: 8px; color: var(--text); }
+.sidebar nav a.active, .sidebar nav a:hover { background: var(--panel-2); }
+.sidebar-status { margin-top: auto; font-size: 0.85rem; color: var(--muted); display: grid; gap: 0.35rem; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--offline); margin-right: 0.35rem; }
+.dot.ok { background: var(--ok); }
+.dot.warn { background: var(--warn); }
+.dot.bad { background: var(--bad); }
+.main { padding: 1.2rem 1.5rem 2rem; }
+.topbar { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 1rem; }
+.topbar h1 { margin: 0; font-size: 1.4rem; }
+.topbar-meta { display: flex; gap: 0.6rem; color: var(--muted); }
+.pill { border: 1px solid var(--line); border-radius: 999px; padding: 0.15rem 0.6rem; font-size: 0.8rem; }
+.grid { display: grid; gap: 0.8rem; }
+.cards-6 { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+.cards-3 { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 0.9rem 1rem; }
+.card h3 { margin: 0 0 0.4rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.value { margin: 0; font-size: 1.15rem; font-weight: 650; word-break: break-word; }
+.value.small { font-size: 0.95rem; font-weight: 600; }
+.value.ok { color: var(--ok); }
+.value.bad { color: var(--bad); }
+.value.muted { color: var(--muted); }
+.muted { color: var(--muted); }
+.hint { color: var(--muted); font-size: 0.9rem; }
+.map { height: calc(100vh - 210px); min-height: 420px; border-radius: 12px; border: 1px solid var(--line); }
+.legend { display: flex; gap: 1rem; margin-top: 0.6rem; color: var(--muted); }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 0.3rem; }
+.swatch.online { background: var(--ok); }
+.swatch.stale { background: var(--warn); }
+.swatch.offline { background: var(--offline); }
+.table-wrap { overflow: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 0.5rem 0.4rem; border-bottom: 1px solid var(--line); font-size: 0.9rem; }
+tr.clickable { cursor: pointer; }
+tr.clickable:hover { background: var(--panel-2); }
+.send-box form, .form-grid { display: flex; flex-wrap: wrap; gap: 0.7rem; align-items: end; }
+label { display: grid; gap: 0.25rem; font-size: 0.85rem; color: var(--muted); }
+label.grow { flex: 1; min-width: 220px; }
+input, select, button, textarea { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 0.5rem 0.65rem; font: inherit; }
+button { background: var(--accent); color: #04221e; font-weight: 700; cursor: pointer; }
+button:hover { filter: brightness(1.05); }
+fieldset { border: 1px solid var(--line); border-radius: 10px; width: 100%; }
+.check { display: flex; align-items: center; gap: 0.4rem; }
+.toolbar { margin-bottom: 0.7rem; }
+.toolbar input { width: min(420px, 100%); }
+.log-view { max-height: calc(100vh - 180px); overflow: auto; white-space: pre-wrap; font: 12px/1.4 ui-monospace, Consolas, monospace; margin: 0; }
+.dialog { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--text); max-width: 640px; }
+.dialog pre { white-space: pre-wrap; font-size: 0.85rem; }
+@media (max-width: 800px) {
+  .shell { grid-template-columns: 1fr; }
+  .sidebar { flex-direction: row; flex-wrap: wrap; }
+}

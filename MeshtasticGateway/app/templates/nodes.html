@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Nodes{% endblock %}
+{% block heading %}Nodes{% endblock %}
+{% block content %}
+<section class="toolbar">
+  <input id="node-search" type="search" placeholder="Search node id, name, or number">
+</section>
+<section class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Node ID</th>
+          <th>Short</th>
+          <th>State</th>
+          <th>GPS</th>
+          <th>Battery</th>
+          <th>Last seen</th>
+          <th>Hardware</th>
+        </tr>
+      </thead>
+      <tbody id="nodes-body"></tbody>
+    </table>
+  </div>
+</section>
+<dialog id="node-dialog" class="dialog">
+  <article>
+    <h2 id="dlg-title">Node</h2>
+    <pre id="dlg-body"></pre>
+    <button id="dlg-close" type="button">Close</button>
+  </article>
+</dialog>
+{% endblock %}
+{% block scripts %}
+<script src="/static/js/nodes.js"></script>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Messages{% endblock %}
+{% block heading %}Messages{% endblock %}
+{% block content %}
+<section class="card send-box">
+  <h3>Send to mesh</h3>
+  <form id="send-form">
+    <label>Destination
+      <select id="send-dest" name="destination">
+        <option value="^all">Broadcast (^all)</option>
+      </select>
+    </label>
+    <label class="grow">Message
+      <input id="send-text" name="text" maxlength="200" required placeholder="Text to send via T-Beam">
+    </label>
+    <button type="submit">Send</button>
+  </form>
+  <p class="hint" id="send-status"></p>
+</section>
+<section class="card">
+  <h3>Live console</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Dir</th>
+          <th>Source</th>
+          <th>Dest</th>
+          <th>Message</th>
+          <th>Packet ID</th>
+          <th>Gateway</th>
+        </tr>
+      </thead>
+      <tbody id="msg-body"></tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="/static/js/messages.js"></script>
+{% endblock %}

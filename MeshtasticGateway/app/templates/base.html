@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Dashboard{% endblock %} · Meshtastic PC Gateway</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">MG</div>
+        <div>
+          <div class="brand-title">Meshtastic</div>
+          <div class="brand-sub">PC Gateway</div>
+        </div>
+      </div>
+      <nav>
+        <a href="/" class="{% if active == 'dashboard' %}active{% endif %}">Dashboard</a>
+        <a href="/map" class="{% if active == 'map' %}active{% endif %}">Live Map</a>
+        <a href="/messages" class="{% if active == 'messages' %}active{% endif %}">Messages</a>
+        <a href="/nodes" class="{% if active == 'nodes' %}active{% endif %}">Nodes</a>
+        <a href="/gateway" class="{% if active == 'gateway' %}active{% endif %}">Gateway</a>
+        <a href="/settings" class="{% if active == 'settings' %}active{% endif %}">Settings</a>
+        <a href="/logs" class="{% if active == 'logs' %}active{% endif %}">Logs</a>
+      </nav>
+      <div class="sidebar-status">
+        <div><span class="dot" id="nav-radio-dot"></span> Radio <strong id="nav-radio">—</strong></div>
+        <div><span class="dot" id="nav-gps-dot"></span> GPS <strong id="nav-gps">—</strong></div>
+        <div class="muted" id="nav-port"></div>
+      </div>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <h1>{% block heading %}Dashboard{% endblock %}</h1>
+        <div class="topbar-meta">
+          <span id="top-gateway-name">{{ gateway_name }}</span>
+          <span class="pill" id="top-uptime">uptime —</span>
+        </div>
+      </header>
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+  <script src="/static/js/websocket.js"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

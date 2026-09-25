@@ -1,0 +1,13 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+sqlalchemy>=2.0
+pydantic>=2.0
+python-dotenv>=1.0
+pyserial>=3.5
+meshtastic>=2.7.0
+jinja2>=3.1
+pypubsub>=4.0.3
+
+# Optional MQTT (not required for the first working version):
+#   pip install "paho-mqtt>=2.1.0"
+# Then set MQTT_ENABLED=true in .env.

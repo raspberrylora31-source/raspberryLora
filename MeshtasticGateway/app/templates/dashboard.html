@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block heading %}Dashboard{% endblock %}
+{% block content %}
+<section class="grid cards-6" id="status-cards">
+  <article class="card"><h3>Radio Status</h3><p class="value" id="d-radio">DISCONNECTED</p></article>
+  <article class="card"><h3>COM Port</h3><p class="value" id="d-port">—</p></article>
+  <article class="card"><h3>Gateway Name</h3><p class="value small" id="d-name">—</p></article>
+  <article class="card"><h3>Gateway Node ID</h3><p class="value small" id="d-node-id">—</p></article>
+  <article class="card"><h3>Firmware</h3><p class="value small" id="d-fw">—</p></article>
+  <article class="card"><h3>Hardware</h3><p class="value small" id="d-hw">—</p></article>
+  <article class="card"><h3>GPS Status</h3><p class="value" id="d-gps">LOCATION UNAVAILABLE</p></article>
+  <article class="card"><h3>Nodes Online</h3><p class="value" id="d-online">0</p></article>
+  <article class="card"><h3>Nodes Total</h3><p class="value" id="d-total">0</p></article>
+  <article class="card"><h3>Messages</h3><p class="value" id="d-messages">0</p></article>
+  <article class="card"><h3>Last Packet</h3><p class="value small" id="d-last">—</p></article>
+  <article class="card"><h3>Uptime</h3><p class="value small" id="d-uptime">—</p></article>
+</section>
+<p class="hint" id="d-error"></p>
+{% endblock %}
+{% block scripts %}
+<script src="/static/js/dashboard.js"></script>
+{% endblock %}
