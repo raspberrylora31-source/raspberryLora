@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Gateway{% endblock %}
+{% block heading %}Gateway{% endblock %}
+{% block content %}
+<section class="grid cards-3">
+  <article class="card"><h3>Identity</h3><p class="value small" id="g-name">—</p><p class="muted" id="g-id"></p></article>
+  <article class="card"><h3>COM Port</h3><p class="value" id="g-port">—</p></article>
+  <article class="card"><h3>Radio</h3><p class="value" id="g-radio">DISCONNECTED</p></article>
+  <article class="card"><h3>Firmware</h3><p class="value small" id="g-fw">—</p></article>
+  <article class="card"><h3>Hardware</h3><p class="value small" id="g-hw">—</p></article>
+  <article class="card"><h3>Node ID</h3><p class="value small" id="g-node-id">—</p></article>
+  <article class="card"><h3>IP Address</h3><p class="value small" id="g-ip">—</p></article>
+  <article class="card"><h3>GPS</h3><p class="value" id="g-gps">LOCATION UNAVAILABLE</p></article>
+  <article class="card"><h3>Latitude / Longitude</h3><p class="value small" id="g-ll">Location unavailable</p></article>
+  <article class="card"><h3>Uptime</h3><p class="value small" id="g-uptime">—</p></article>
+</section>
+<section class="card">
+  <button id="reconnect-btn" type="button">Reconnect Radio</button>
+  <p class="hint" id="g-error"></p>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+async function refreshGateway() {
+  const s = await (await fetch("/api/gateway")).json();
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v ?? "—"; };
+  set("g-name", s.gateway_name);
+  set("g-id", s.gateway_id);
+  set("g-port", s.com_port);
+  set("g-radio", s.radio_status);
+  set("g-fw", s.firmware_version || "—");
+  set("g-hw", s.hardware_model || "—");
+  set("g-node-id", s.gateway_node_id || "—");
+  set("g-ip", s.ip_address);
+  set("g-gps", s.gps_status);
+  if (s.latitude != null && s.longitude != null) {
+    set("g-ll", s.latitude + ", " + s.longitude);
+  } else {
+    set("g-ll", "Location unavailable");
+  }
+  set("g-uptime", GatewayWS.formatUptime(s.uptime_seconds));
+  set("g-error", s.last_error || "");
+  document.getElementById("g-radio").className = "value " + (s.radio_connected ? "ok" : "bad");
+  document.getElementById("g-gps").className = "value " + (s.gps_status === "FIX AVAILABLE" ? "ok" : "muted");
+}
+GatewayWS.on("radio_status", refreshGateway);
+GatewayWS.on("gateway_status", refreshGateway);
+refreshGateway();
+document.getElementById("reconnect-btn").addEventListener("click", async () => {
+  const res = await fetch("/api/gateway/reconnect", { method: "POST" });
+  const body = await res.json();
+  document.getElementById("g-error").textContent = "Reconnect requested (" + body.radio_status + ")";
+  setTimeout(refreshGateway, 1500);
+});
+</script>
+{% endblock %}

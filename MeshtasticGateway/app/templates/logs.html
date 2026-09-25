@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Logs{% endblock %}
+{% block heading %}Logs{% endblock %}
+{% block content %}
+<section class="card">
+  <pre class="log-view" id="log-view">Loading logs…</pre>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+async function loadLogs() {
+  const res = await fetch("/api/logs?lines=300");
+  const body = await res.json();
+  const view = document.getElementById("log-view");
+  view.textContent = (body.lines || []).join("\n") || "(empty)";
+  view.scrollTop = view.scrollHeight;
+}
+loadLogs();
+setInterval(loadLogs, 4000);
+</script>
+{% endblock %}

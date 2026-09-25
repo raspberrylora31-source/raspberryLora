@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block heading %}Settings{% endblock %}
+{% block content %}
+<section class="card">
+  <form id="settings-form" class="form-grid">
+    <label>Gateway name <input name="gateway_name" required maxlength="64"></label>
+    <label>Gateway ID <input name="gateway_id" required maxlength="64"></label>
+    <label>COM port
+      <input name="com_port" list="port-list" required maxlength="64">
+      <datalist id="port-list"></datalist>
+    </label>
+    <fieldset>
+      <legend>MQTT (disabled by default)</legend>
+      <label class="check"><input type="checkbox" name="mqtt_enabled"> Enable MQTT</label>
+      <label>Broker <input name="mqtt_broker" maxlength="255"></label>
+      <label>Port <input name="mqtt_port" type="number" min="1" max="65535"></label>
+      <label>Username <input name="mqtt_user" maxlength="128" autocomplete="off"></label>
+      <label>Password <input name="mqtt_password" type="password" maxlength="256" autocomplete="new-password" placeholder="unchanged if blank"></label>
+      <label class="check"><input type="checkbox" name="mqtt_tls"> TLS</label>
+      <label>Topic prefix <input name="mqtt_topic_prefix" maxlength="64"></label>
+    </fieldset>
+    <p class="hint">The password field is write-only. Existing passwords are never shown or logged.</p>
+    <button type="submit">Save settings</button>
+    <p class="hint" id="settings-status"></p>
+  </form>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+async function loadSettings() {
+  const [s, ports] = await Promise.all([
+    fetch("/api/settings").then(r => r.json()),
+    fetch("/api/ports").then(r => r.json()),
+  ]);
+  const form = document.getElementById("settings-form");
+  form.gateway_name.value = s.gateway_name;
+  form.gateway_id.value = s.gateway_id;
+  form.com_port.value = s.com_port;
+  form.mqtt_enabled.checked = s.mqtt_enabled;
+  form.mqtt_broker.value = s.mqtt_broker;
+  form.mqtt_port.value = s.mqtt_port;
+  form.mqtt_user.value = s.mqtt_user;
+  form.mqtt_password.value = "";
+  form.mqtt_tls.checked = s.mqtt_tls;
+  form.mqtt_topic_prefix.value = s.mqtt_topic_prefix;
+  const list = document.getElementById("port-list");
+  list.innerHTML = "";
+  (ports.ports || []).forEach(p => {
+    const opt = document.createElement("option");
+    opt.value = p.device;
+    opt.label = p.description || p.device;
+    list.appendChild(opt);
+  });
+}
+document.getElementById("settings-form").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const form = ev.target;
+  const body = {
+    gateway_name: form.gateway_name.value.trim(),
+    gateway_id: form.gateway_id.value.trim(),
+    com_port: form.com_port.value.trim(),
+    mqtt_enabled: form.mqtt_enabled.checked,
+    mqtt_broker: form.mqtt_broker.value.trim(),
+    mqtt_port: Number(form.mqtt_port.value),
+    mqtt_user: form.mqtt_user.value,
+    mqtt_tls: form.mqtt_tls.checked,
+    mqtt_topic_prefix: form.mqtt_topic_prefix.value.trim(),
+  };
+  if (form.mqtt_password.value) body.mqtt_password = form.mqtt_password.value;
+  const res = await fetch("/api/settings", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const status = document.getElementById("settings-status");
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    status.textContent = "Save failed: " + JSON.stringify(err.detail || err);
+    return;
+  }
+  form.mqtt_password.value = "";
+  status.textContent = "Saved.";
+});
+loadSettings();
+</script>
+{% endblock %}
