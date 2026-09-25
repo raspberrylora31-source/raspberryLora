@@ -78,7 +78,7 @@ def _page(request: Request, name: str, extra: dict | None = None) -> HTMLRespons
     }
     if extra:
         context.update(extra)
-    return templates.TemplateResponse(f"{name}.html", context)
+    return templates.TemplateResponse(request, f"{name}.html", context)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -125,7 +125,12 @@ def api_logs(lines: int = 200) -> dict:
 async def websocket_endpoint(websocket: WebSocket):
     await ws_manager.connect(websocket)
     try:
-        await websocket.send_json({"type": "radio_status", "data": radio_service.status_payload()})
+        try:
+            status = radio_service.status_payload()
+        except Exception:
+            logger.exception("Failed to build radio status for WebSocket")
+            status = {"radio_status": "DISCONNECTED", "radio_connected": False}
+        await websocket.send_json({"type": "radio_status", "data": status})
         await websocket.send_json(
             {
                 "type": "mqtt_status",
@@ -135,7 +140,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 },
             }
         )
-        await websocket.send_json({"type": "gateway_status", "data": radio_service.status_payload()})
+        await websocket.send_json({"type": "gateway_status", "data": status})
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:

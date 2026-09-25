@@ -31,7 +31,8 @@ from app.config import settings
 from app.database import SessionLocal
 from app.logging_setup import get_logger
 from app.models import GatewayStatus, utcnow
-from app.services import mqtt_service, node_service, packet_service
+from app.services import node_service, packet_service
+from app.services.mqtt_service import mqtt_service
 from app.services.node_service import has_valid_gps, node_to_dict
 from app.services.websocket_service import ws_manager
 
